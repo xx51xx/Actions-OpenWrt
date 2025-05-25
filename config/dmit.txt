@@ -12,7 +12,7 @@ config interface 'wan'
         option gateway '154.17.229.1'
         option netmask '255.255.255.0'
         
-        option ip6addr '2605:52c0:1:413:e0f6:4bff:fe63:1c6f/64'
+        option ip6addr '2605:52c0:1:413:80ab:a2ff:fe8f:8c96/64'
         option ip6gw 'fe80::14a7:b9ff:fe92:b46c'
 
         list dns '8.8.8.8'
