@@ -5,7 +5,7 @@ mount -o remount,size=128M tmpfs /tmp
 # 挂载Swap缓存
 swapon '/www/swapfile'
 # 手动清理文件缓存和缓冲区缓存
-sync; echo 3 > /proc/sys/vm/drop_caches
+# sync; echo 3 > /proc/sys/vm/drop_caches
 # 禁用ICMP
 echo 1 > /proc/sys/net/ipv4/icmp_echo_ignore_all
 echo 1 > /proc/sys/net/ipv6/icmp/echo_ignore_all
