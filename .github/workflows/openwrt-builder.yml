@@ -35,7 +35,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: ACTIONS/adminroot
+      uses: actions/checkout@main
 
     - name: Initialization environment
       env:
