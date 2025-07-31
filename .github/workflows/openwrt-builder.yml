@@ -32,7 +32,14 @@ jobs:
           sudo timedatectl set-timezone "$TZ"
           # sudo mkdir -p /workdir
           # sudo chown $USER:$GROUPS /workdir
+          
+          ts=$(date +'%Y%m%d%H%M%S')
+          release_tag="OpenWRT_Build_$ts"
+          echo "release_tag=$release_tag" >> $GITHUB_ENV
+          mkdir -p img
+
           sudo df -hT
+
 
       - name: 获取 config 目录列表
         id: get-configs
@@ -94,30 +101,23 @@ jobs:
 
             mkdir -p openwrt/bin/targets/xx/
             dd if=/dev/zero of=openwrt/bin/targets/xx/hello-openwrt.img.gz bs=1M count=1
+            dd if=/dev/zero of=openwrt/bin/targets/xx/hello-openwrt2.img.gz bs=1M count=1
+            dd if=/dev/zero of=openwrt/bin/targets/xx/hello-openwrt23.img.gz bs=1M count=1
 
-            img_path=$(find openwrt/bin/targets -type f -name '*.img.gz' | head -n1)
-            if [ -z "$img_path" ]; then
-              echo "⚠️ 未找到固件文件，跳过上传"
-              continue
-            fi
-            echo "固件路径: $img_path"
 
-            ts=$(date +'%Y%m%d%H%M%S')
-            release_tag="${config_dir}_$ts"
-            echo "release_tag=$release_tag" >> $GITHUB_ENV
-            echo "img_path=$img_path" >> $GITHUB_ENV
-            echo "config_dir=$config_dir" >> $GITHUB_ENV
-            echo "✅ 构建完成: $config_dir"
+           # 最后拷贝所有 img.gz 到 img 目录
+          find openwrt/bin/targets -type f -name '*.img.gz' | while read -r img_path; do
+            file_name=$(basename "$img_path")
+            cp "$img_path" "./img/${config_dir}_${file_name}"
+            echo "要发布的编译文件: $file_name"
 
           done
 
-      - name: 上传固件到 GitHub Release
-        uses: softprops/action-gh-release@v1
-        if: env.img_path != ''
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: 上传所有固件到 GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.release_tag }}
           name: ${{ env.release_tag }}
-          body: "自动发布固件"
-          files: ${{ env.img_path }}
+          body: 自动构建上传的 OpenWrt 固件集合
+          files: img/*
+    
