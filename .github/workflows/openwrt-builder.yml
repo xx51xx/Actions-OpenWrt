@@ -93,20 +93,52 @@ jobs:
             cd ..
 
             # 定位 .img.gz 固件
+            # —— 安装并登录 gh CLI（只执行一次，可放到 workflow 开头） —— 
+            if ! command -v gh &>/dev/null; then
+              echo "⚙️ 安装 GitHub CLI…"
+              sudo apt-get update -qq
+              sudo apt-get install -y gh
+            fi
+            
+            # —— 自动获取本地 Token 并认证 —— 
+            # 优先使用 Actions 内置的 GITHUB_TOKEN，否则回退到用户自定义的 GH_TOKEN
+            TOKEN="${GITHUB_TOKEN:-$GH_TOKEN}"
+            if [ -z "$TOKEN" ]; then
+              echo "❌ 找不到 GITHUB_TOKEN 或 GH_TOKEN，无法认证 gh CLI"
+              exit 1
+            fi
+            echo "$TOKEN" | gh auth login --with-token
+            
+            # —— 定位 .img.gz 固件 —— 
             img_path=$(find openwrt/bin/targets -type f -name '*.img.gz' | head -n1)
-            if [ -z "$img_path" ]; then
+            if [ -z "$img_path" ] || [ ! -f "$img_path" ]; then
               echo "⚠️ 未找到固件文件，跳过上传"
               continue
             fi
             echo "固件路径: $img_path"
-
-            # 生成 Release Tag
+            
+            # —— 生成 Release Tag —— 
             ts=$(date +'%Y%m%d%H%M%S')
             release_tag="${config_dir}_$ts"
             echo "生成 Tag: $release_tag"
+            
+            # —— 避免同名冲突，若已存在则先删除旧 Release —— 
+            if gh release view "$release_tag" &>/dev/null; then
+              echo "⚠️ Release ${release_tag} 已存在，删除旧 Release"
+              gh release delete "$release_tag" --yes
+            fi
+            
+            # —— 上传到 GitHub Release —— 
+            echo "开始创建 Release 并上传固件…"
+            if ! gh release create "$release_tag" "$img_path" \
+                 --title "$release_tag" \
+                 --notes "自动发布固件"; then
+              echo "⚠️ 首次上传失败，正在重试…"
+              gh release create "$release_tag" "$img_path" \
+                 --title "$release_tag" \
+                 --notes "自动发布固件(retry)"
+            fi
+            
+            echo "✅ 完成构建并上传: $config_dir → $release_tag"
 
-            # 上传固件到 GitHub Release
-            gh release create "$release_tag" "$img_path" --title "$release_tag" --notes "自动发布固件"
-
-            echo "完成构建并上传: $config_dir"
           done
