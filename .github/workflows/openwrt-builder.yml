@@ -11,7 +11,7 @@ jobs:
       REPO_URL:    https://github.com/coolsnowwolf/lede
       REPO_BRANCH: master
       TZ:          Asia/Shanghai
-      PKG:         hello-openwrt
+      PKGS:         hello-openwrt
       Config:      config_docker
     steps:
       - name: 检出仓库
@@ -57,7 +57,7 @@ jobs:
 
             # 复制 .config 和自定义包
             cp "config/$config_dir/$Config" openwrt/.config
-            pkg="config/$config_dir/$PKG"
+            pkg="config/$config_dir/$PKGS"
             if [ -d "$pkg" ]; then
               cp -R "$pkg" openwrt/package/
             fi
