@@ -50,16 +50,12 @@ jobs:
           echo "发现配置列表: $configs"
           # 将 configs 解析成数组
           config_array=$(echo "$configs" | jq -r '.[]')
+          
+          git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" openwrt
+          
           for config_dir in $config_array; do
           
             echo "开始构建配置: $config_dir"
-            # 清理并重新克隆源码目录，保证干净环境
-            # rm -rf openwrt
-            git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" openwrt
-            # 复制 .config 和自定义包
-            cp -f "config/$config_dir/$Config" openwrt/.config
-            pkg="config/$config_dir/$PKGS"
-            cp -rf "$pkg" openwrt/package/
             
             # 自定义步骤 1
             if [ -f diy-part1.sh ]; then
@@ -69,12 +65,18 @@ jobs:
             fi
             # 更新并安装 Feeds
             cd openwrt
+            
+            # 复制 .config 和自定义包
+            cp -f "config/$config_dir/$Config" openwrt/.config
+            pkg="config/$config_dir/$PKGS"
+            cp -rf "$pkg" openwrt/package/
+            
             ./scripts/feeds update -a
             ./scripts/feeds install -a
-            # 下载源码依赖并清理空包
-            make defconfig
-            make download -j$(nproc) || true
-            find dl -size -1024c -delete
+            
+            # 下载源码依赖
+            make download -j$(nproc) || make -j1 V=s
+            
             # 自定义步骤 2
             cd ..
             if [ -f diy-part2.sh ]; then
@@ -94,7 +96,10 @@ jobs:
                 cp "$img_path" "./img/${config_dir}_${file_name}"
                 echo "要发布的编译文件: ${config_dir}_${file_name}"
             done
+            
             # 清空编译好的包
+            make defconfig
+            rm -rf .comfig
             rm -rf openwrt/bin/targets/*
             
           done
