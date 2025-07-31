@@ -54,14 +54,13 @@ jobs:
           
             echo "开始构建配置: $config_dir"
             # 清理并重新克隆源码目录，保证干净环境
-            rm -rf openwrt
+            # rm -rf openwrt
             git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" openwrt
             # 复制 .config 和自定义包
-            cp "config/$config_dir/$Config" openwrt/.config
+            cp -f "config/$config_dir/$Config" openwrt/.config
             pkg="config/$config_dir/$PKGS"
-            if [ -d "$pkg" ]; then
-              cp -R "$pkg" openwrt/package/
-            fi
+            cp -rf "$pkg" openwrt/package/
+            
             # 自定义步骤 1
             if [ -f diy-part1.sh ]; then
               chmod +x diy-part1.sh
