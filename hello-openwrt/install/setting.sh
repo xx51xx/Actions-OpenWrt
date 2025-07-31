@@ -1,5 +1,18 @@
 ﻿#!/bin/sh
 
+# 设置时间
+ uci -q batch <<-EOF
+	set system.@system[0].timezone='CST-8'
+	set system.@system[0].zonename='Asia/Shanghai'
+
+	delete system.ntp.server
+	add_list system.ntp.server='ntp1.aliyun.com'
+	add_list system.ntp.server='ntp.tencent.com'
+	add_list system.ntp.server='ntp.ntsc.ac.cn'
+	add_list system.ntp.server='time.apple.com'
+EOF
+uci commit system
+
 # 扩容磁盘
 /root/soft/set_disk.sh
 
@@ -39,7 +52,7 @@ rm -rf /etc/uhttpd*
 mkdir /home && chmod 0755 /home
 
 # 禁止Docker 开机自启
-# [ -f /etc/init.d/dockerd ] && ( /etc/init.d/dockerd disable  && /etc/init.d/dockerd stop)
+[ -f /etc/init.d/dockerd ] && ( /etc/init.d/dockerd disable  && /etc/init.d/dockerd stop)
 
 # 重启
 reboot
