@@ -79,7 +79,7 @@ jobs:
 
       - name: Load config and packages for ${{ matrix.config }}
         run: |
-          cp config/${{ matrix.config }}/.config openwrt/.config
+          cp config/${{ matrix.config }}/config_docker openwrt/.config
           cp -r config/${{ matrix.config }}/*/ openwrt/package/
           chmod -R 0755 openwrt/package/
           ls -l openwrt/package/
