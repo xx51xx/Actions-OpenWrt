@@ -37,7 +37,7 @@ jobs:
       - name: 获取 config 目录列表
         id: get-configs
         run: |
-          configs=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | jq -R . | jq -cs .)
+          configs=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | jq -R '@json' | jq -cs .)
           echo "configs=$configs" >> $GITHUB_OUTPUT
 
       - name: 顺序构建每个 config
