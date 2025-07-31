@@ -63,14 +63,14 @@ jobs:
               cd openwrt && ../diy-part1.sh
               cd ..
             fi
-            # 更新并安装 Feeds
-            cd openwrt
             
             # 复制 .config 和自定义包
             cp -f "config/$config_dir/$Config" openwrt/.config
             pkg="config/$config_dir/$PKGS"
             cp -rf "$pkg" openwrt/package/
-            
+
+            # 更新并安装 Feeds
+            cd openwrt
             ./scripts/feeds update -a
             ./scripts/feeds install -a
             
@@ -84,6 +84,7 @@ jobs:
               cd openwrt && ../diy-part2.sh
               cd ..
             fi
+            
             # 编译固件
             cd openwrt
             make -j$(nproc) || make -j1 V=s
@@ -100,7 +101,7 @@ jobs:
             # 清空编译好的包
             make defconfig
             rm -rf .comfig
-            rm -rf openwrt/bin/targets/*
+            cd .. && rm -rf openwrt/bin/targets/*
             
           done
       - name: 上传所有固件到 GitHub Release
