@@ -56,64 +56,60 @@ jobs:
           config_array=$(echo "$configs" | jq -r '.[]')
 
           for config_dir in $config_array; do
-            # echo "开始构建配置: $config_dir"
-
-            # # 清理并重新克隆源码目录，保证干净环境
-            # rm -rf openwrt
-            # git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" openwrt
-
-            # # 复制 .config 和自定义包
-            # cp "config/$config_dir/$Config" openwrt/.config
-            # pkg="config/$config_dir/$PKGS"
-            # if [ -d "$pkg" ]; then
-            #   cp -R "$pkg" openwrt/package/
-            # fi
-
-            # # 自定义步骤 1
-            # if [ -f diy-part1.sh ]; then
-            #   chmod +x diy-part1.sh
-            #   cd openwrt && ../diy-part1.sh
-            #   cd ..
-            # fi
-
-            # # 更新并安装 Feeds
-            # cd openwrt
-            # ./scripts/feeds update -a
-            # ./scripts/feeds install -a
-
-            # # 下载源码依赖并清理空包
-            # make defconfig
-            # make download -j$(nproc) || true
-            # find dl -size -1024c -delete
-
-            # # 自定义步骤 2
-            # cd ..
-            # if [ -f diy-part2.sh ]; then
-            #   chmod +x diy-part2.sh
-            #   cd openwrt && ../diy-part2.sh
-            #   cd ..
-            # fi
-
-            # # 编译固件
-            # cd openwrt
-            # make -j$(nproc) || make -j1 V=s
-            # cd ..
-
-            mkdir -p openwrt/bin/targets/xx/
-            dd if=/dev/zero of=openwrt/bin/targets/xx/hello-openwrt.img.gz bs=1M count=1
-            dd if=/dev/zero of=openwrt/bin/targets/xx/hello-openwrt2.img.gz bs=1M count=1
-            dd if=/dev/zero of=openwrt/bin/targets/xx/hello-openwrt23.img.gz bs=1M count=1
-
-
-           # 最后拷贝所有 img.gz 到 img 目录
-            find openwrt/bin/targets -type f -name '*.img.gz' | while read -r img_path; do
-              file_name=$(basename "$img_path")
-              cp "$img_path" "./img/${config_dir}_${file_name}"
-              echo "要发布的编译文件: $file_name"
-              
-            done
           
+            echo "开始构建配置: $config_dir"
 
+            # 清理并重新克隆源码目录，保证干净环境
+            rm -rf openwrt
+            git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" openwrt
+
+            # 复制 .config 和自定义包
+            cp "config/$config_dir/$Config" openwrt/.config
+            pkg="config/$config_dir/$PKGS"
+            if [ -d "$pkg" ]; then
+              cp -R "$pkg" openwrt/package/
+            fi
+
+            # 自定义步骤 1
+            if [ -f diy-part1.sh ]; then
+              chmod +x diy-part1.sh
+              cd openwrt && ../diy-part1.sh
+              cd ..
+            fi
+
+            # 更新并安装 Feeds
+            cd openwrt
+            ./scripts/feeds update -a
+            ./scripts/feeds install -a
+
+            # 下载源码依赖并清理空包
+            make defconfig
+            make download -j$(nproc) || true
+            find dl -size -1024c -delete
+
+            # 自定义步骤 2
+            cd ..
+            if [ -f diy-part2.sh ]; then
+              chmod +x diy-part2.sh
+              cd openwrt && ../diy-part2.sh
+              cd ..
+            fi
+
+            # 编译固件
+            cd openwrt
+            make -j$(nproc) || make -j1 V=s
+            cd ..
+
+
+            # 拷贝固件到 img 并重命名（只保留 .img.gz 和 .bin，但排除 kernel.bin 和 rootfs.img.gz）
+            find openwrt/bin/targets -type f \( -name '*.img.gz' -o -name '*.bin' \) \
+              | grep -Ev 'kernel\.bin$|rootfs\.img\.gz$' \
+              | while read -r img_path; do
+                file_name=$(basename "$img_path")
+                cp "$img_path" "./img/${config_dir}_${file_name}"
+                echo "✅ 要发布的编译文件: ${config_dir}_${file_name}"
+            done
+            
           done
 
       - name: 上传所有固件到 GitHub Release
