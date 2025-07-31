@@ -1,126 +1,113 @@
-name: OpenWrt 顺序构建发布
+name: Golang 构建发布
 
 on:
   workflow_dispatch:
 
 jobs:
   build-sequential:
-    name: 顺序构建并发布固件
+    name: 构建并发布固件
     runs-on: ubuntu-22.04
     env:
-      REPO_URL:    https://github.com/coolsnowwolf/lede
       REPO_BRANCH: master
-      TZ:          Asia/Shanghai
-      PKGS:         hello-openwrt
-      Config:      .config
+      TZ: Asia/Shanghai
+
     steps:
       - name: 检出仓库
         uses: actions/checkout@v3
 
-      - name: 安装 jq（JSON 处理工具）
+      - name: 安装 Golang 和工具
         run: |
-          sudo df -hT
           sudo apt-get update -qq
-          sudo apt-get install -qq -y jq
+          sudo apt-get install -y jq curl upx-ucl
 
-          sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
-          sudo docker image prune --all --force
-          sudo -E apt-get -qq update
-          sudo -E apt-get -qq install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp ninja-build p7zip p7zip-full patch pkgconf python2.7 python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
-          sudo -E apt-get -qq autoremove --purge
-          sudo -E apt-get -qq clean
-          sudo timedatectl set-timezone "$TZ"
-          
-          sudo mkdir -p /workdir
-          sudo chown $USER:$GROUPS /workdir
-          
+          ARCH="linux-amd64"
+          GOLANG_LATEST=$(curl -s https://go.dev/dl/?mode=json | grep -o "go[0-9.]*.${ARCH}.tar.gz" | head -n 1 | tr -d '\r\n')
+          DOWNLOAD_URL="https://go.dev/dl/${GOLANG_LATEST}"
+
+          echo "最新版 Go: $GOLANG_LATEST"
+          echo "下载地址: $DOWNLOAD_URL"
+
+          curl -LO "$DOWNLOAD_URL"
+          sudo rm -rf /usr/local/go
+          sudo tar -C /usr/local -xzf "$GOLANG_LATEST"
+          rm -f "$GOLANG_LATEST"
+
+          # 设置 Go 环境变量
+          echo "/usr/local/go/bin" >> $GITHUB_PATH
+          echo "GO111MODULE=on" >> $GITHUB_ENV
+
+          # 设置 release tag
           ts=$(date +'%Y%m%d%H%M%S')
-          release_tag="OpenWRT_Build_$ts"
-          echo "release_tag=$release_tag" >> $GITHUB_ENV
-          mkdir -p img
+          echo "release_tag=OpenWRT_Build_$ts" >> $GITHUB_ENV
 
-          sudo df -hT
-
-
-      - name: 获取 config 目录列表
-        id: get-configs
+      - name: 构建多架构二进制
         run: |
-          configs=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | jq -R '@json' | jq -cs .)
-          echo "configs=$configs" >> $GITHUB_OUTPUT
+          export PATH=$PATH:/usr/local/go/bin
+          export CGO_ENABLED=0
 
-      - name: 顺序构建每个 config
-        id: build_loop
+          TIME_TAG=$(date +"%Y%m%d%H%M")
+          OUT_DIR="./soft"
+          mkdir -p "$OUT_DIR"
+          rm -rf "$OUT_DIR"/*
+
+          build_target() {
+              local os=$1
+              local arch=$2
+              local output=$3
+              local ldflags=$4
+              local extra_env=$5
+
+              (
+                  echo "编译: $output"
+                  export GOOS=$os
+                  export GOARCH=$arch
+                  eval "$extra_env"
+                  if go build -o "$output" -ldflags="$ldflags" .; then
+                      echo "✅ 成功: $output"
+                  else
+                      echo "❌ 失败: $output"
+                  fi
+              ) &
+          }
+
+          build_target windows amd64 "${OUT_DIR}/control_windows_amd64_${TIME_TAG}.exe" "-s -w -H windowsgui" ""
+          build_target linux amd64 "${OUT_DIR}/control_linux_amd64_${TIME_TAG}" "-s -w" ""
+          build_target linux arm64 "${OUT_DIR}/control_linux_arm64_${TIME_TAG}" "-s -w" ""
+          build_target linux mipsle "${OUT_DIR}/control_linux_mips32_${TIME_TAG}" "-s -w" "export GOMIPS=softfloat"
+
+          wait
+          echo "✅ 所有编译完成:"
+          ls -lh "$OUT_DIR"
+
+      - name: 压缩二进制文件（UPX）
         run: |
-          configs=${{ steps.get-configs.outputs.configs }}
-          echo "发现配置列表: $configs"
-          # 将 configs 解析成数组
-          config_array=$(echo "$configs" | jq -r '.[]')
+          OUT_DIR="./soft"
+          TIME_TAG=$(date +"%Y%m%d%H%M")
 
-          for config_dir in $config_array; do
-          
-            echo "开始构建配置: $config_dir"
+          compress_if_exists() {
+              local file=$1
+              if [[ -f "$file" ]]; then
+                  echo "压缩: $file"
+                  upx --best "$file" &
+              else
+                  echo "⚠️ 文件不存在: $file"
+              fi
+          }
 
-            # 清理并重新克隆源码目录，保证干净环境
-            rm -rf openwrt
-            git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" openwrt
+          compress_if_exists "${OUT_DIR}/control_linux_amd64_${TIME_TAG}"
+          compress_if_exists "${OUT_DIR}/control_linux_arm64_${TIME_TAG}"
+          compress_if_exists "${OUT_DIR}/control_linux_mips32_${TIME_TAG}"
+          # 可选：Windows 平台压缩
+          # compress_if_exists "${OUT_DIR}/control_windows_amd64_${TIME_TAG}.exe"
 
-            # 复制 .config 和自定义包
-            cp "config/$config_dir/$Config" openwrt/.config
-            pkg="config/$config_dir/$PKGS"
-            if [ -d "$pkg" ]; then
-              cp -R "$pkg" openwrt/package/
-            fi
-
-            # 自定义步骤 1
-            if [ -f diy-part1.sh ]; then
-              chmod +x diy-part1.sh
-              cd openwrt && ../diy-part1.sh
-              cd ..
-            fi
-
-            # 更新并安装 Feeds
-            cd openwrt
-            ./scripts/feeds update -a
-            ./scripts/feeds install -a
-
-            # 下载源码依赖并清理空包
-            make defconfig
-            make download -j$(nproc) || true
-            find dl -size -1024c -delete
-
-            # 自定义步骤 2
-            cd ..
-            if [ -f diy-part2.sh ]; then
-              chmod +x diy-part2.sh
-              cd openwrt && ../diy-part2.sh
-              cd ..
-            fi
-
-            # 编译固件
-            cd openwrt
-            make -j$(nproc) || make -j1 V=s
-            cd ..
-
-
-            # 拷贝固件到 img 并重命名（只保留 .img.gz 和 .bin，但排除 kernel.bin 和 rootfs.img.gz）
-            find openwrt/bin/targets -type f \( -name '*.img.gz' -o -name '*.bin' \) \
-              | grep -Ev 'kernel\.bin$|rootfs\.img\.gz$' \
-              | while read -r img_path; do
-                file_name=$(basename "$img_path")
-                cp "$img_path" "./img/${config_dir}_${file_name}"
-                echo "要发布的编译文件: ${config_dir}_${file_name}"
-            done
-
-            # 清空编译好的包
-            rm -rf openwrt/bin/targets/*
-            
-          done
+          wait
+          echo "✅ 压缩完成:"
+          ls -lh "$OUT_DIR"
 
       - name: 上传所有固件到 GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.release_tag }}
           name: ${{ env.release_tag }}
-          body: 自动构建上传的 OpenWrt 固件集合
-          files: img/*
-    
+          body: 自动构建上传的 OpenWrt Golang 控制器
+          files: soft/*
