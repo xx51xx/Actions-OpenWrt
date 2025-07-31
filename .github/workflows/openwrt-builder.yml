@@ -107,7 +107,7 @@ jobs:
               | while read -r img_path; do
                 file_name=$(basename "$img_path")
                 cp "$img_path" "./img/${config_dir}_${file_name}"
-                echo "✅ 要发布的编译文件: ${config_dir}_${file_name}"
+                echo "要发布的编译文件: ${config_dir}_${file_name}"
             done
             
           done
