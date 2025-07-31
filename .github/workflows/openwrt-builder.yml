@@ -106,10 +106,13 @@ jobs:
 
 
            # 最后拷贝所有 img.gz 到 img 目录
-          find openwrt/bin/targets -type f -name '*.img.gz' | while read -r img_path; do
-            file_name=$(basename "$img_path")
-            cp "$img_path" "./img/${config_dir}_${file_name}"
-            echo "要发布的编译文件: $file_name"
+            find openwrt/bin/targets -type f -name '*.img.gz' | while read -r img_path; do
+              file_name=$(basename "$img_path")
+              cp "$img_path" "./img/${config_dir}_${file_name}"
+              echo "要发布的编译文件: $file_name"
+              
+            done
+          
 
           done
 
