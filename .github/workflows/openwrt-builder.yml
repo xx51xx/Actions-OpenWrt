@@ -95,7 +95,6 @@ jobs:
             mkdir -p openwrt/bin/targets/xx/
             dd if=/dev/zero of=openwrt/bin/targets/xx/hello-openwrt.img.gz bs=1M count=1
 
-            # 定位 .img.gz 固件
             img_path=$(find openwrt/bin/targets -type f -name '*.img.gz' | head -n1)
             if [ -z "$img_path" ]; then
               echo "⚠️ 未找到固件文件，跳过上传"
@@ -103,14 +102,22 @@ jobs:
             fi
             echo "固件路径: $img_path"
 
-            # 生成 Release Tag
             ts=$(date +'%Y%m%d%H%M%S')
             release_tag="${config_dir}_$ts"
-            echo "生成 Tag: $release_tag"
-
-            # 上传固件到 GitHub Release
-            gh release create "$release_tag" "$img_path" --title "$release_tag" --notes "自动发布固件"
-
-            echo "完成构建并上传: $config_dir"
+            echo "release_tag=$release_tag" >> $GITHUB_ENV
+            echo "img_path=$img_path" >> $GITHUB_ENV
+            echo "config_dir=$config_dir" >> $GITHUB_ENV
+            echo "✅ 构建完成: $config_dir"
 
           done
+
+      - name: 上传固件到 GitHub Release
+        uses: softprops/action-gh-release@v1
+        if: env.img_path != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.release_tag }}
+          name: ${{ env.release_tag }}
+          body: "自动发布固件"
+          files: ${{ env.img_path }}
