@@ -1,8 +1,9 @@
+#!/bin/sh /etc/rc.common
 START=90
 STOP=90
 SERVICE=control
 USE_PROCD=1
-PROC="/home/control/control -c https://www.apiaa.cn/control/config.json -n cdn-one.apiaa.cn"
+PROC="/home/control/control -c https://www.apiaa.cn/control/config.json -n cdn-one.apiaa.cn > /dev/null 2>&1"
 
 start_service() {
     procd_open_instance
