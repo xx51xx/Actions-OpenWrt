@@ -109,6 +109,9 @@ jobs:
                 cp "$img_path" "./img/${config_dir}_${file_name}"
                 echo "要发布的编译文件: ${config_dir}_${file_name}"
             done
+
+            # 清空编译好的包
+            rm -rf openwrt/bin/targets/*
             
           done
 
