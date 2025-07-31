@@ -12,8 +12,8 @@ config interface 'wan'
         option gateway '149.104.8.129'
         option netmask '255.255.255.0'
         
-        option ip6addr 'fe80::/10'
-        option ip6gw 'fe80::'
+        option ip6addr '2001:df5:8300:8003::10/112'
+        option ip6gw '2001:df5:8300:8003::1'
 
         list dns '8.8.8.8'
         list dns '1.1.1.1'
