@@ -1,83 +1,28 @@
-# ===================================================================
-# GitHub Actions Workflow：OpenWrt 矩阵化构建并发布 .img.gz 固件
-#
-# 修正版要点：
-# 1. 用 echo "key=value" >> $GITHUB_OUTPUT 取代 set-output
-# 2. 用 jq -c 生成单行 JSON，避免换行导致解析失败
-# 3. 直接把 matrix 当数组，build 里直接 fromJson
-# ===================================================================
-
-name: OpenWrt 矩阵化构建
+name: OpenWrt 顺序构建发布
 
 on:
   workflow_dispatch:
 
 jobs:
-  # -----------------------------------------------------------------
-  # 模块：prepare_matrix
-  # 目标：扫描 config/ 下所有一级子目录，生成矩阵数组
-  # 输出：matrix="[{"config":"x86_64-.."}, {"config":"arm_.."}, ...]"
-  # -----------------------------------------------------------------
-  prepare_matrix:
-    name: 准备配置矩阵
+  build-sequential:
+    name: 顺序构建并发布固件
     runs-on: ubuntu-22.04
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    env:
+      REPO_URL:    https://github.com/coolsnowwolf/lede
+      REPO_BRANCH: master
+      TZ:          Asia/Shanghai
+      PKG:         hello-openwrt
+      Config:      config_docker
     steps:
       - name: 检出仓库
         uses: actions/checkout@v3
 
       - name: 安装 jq（JSON 处理工具）
         run: |
+          sudo df -hT
           sudo apt-get update -qq
           sudo apt-get install -qq -y jq
 
-      - name: 生成配置矩阵
-        id: set-matrix
-        run: |
-          # 1. 找出 config/ 下所有一级子目录名
-          configs=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | jq -R . | jq -cs .)
-
-          # 2. 把目录名数组变成 [{"config":"xxx"}, ...] 这样的矩阵数组
-          matrix=$(jq -n --argjson arr "$configs" '
-            $arr | map({ config: . })
-          ')
-
-          # 3. 用 jq -c 压缩成单行，再写入输出变量
-          matrix_compact=$(echo "$matrix" | jq -c .)
-          echo "matrix=$matrix_compact" >> $GITHUB_OUTPUT
-
-  # -----------------------------------------------------------------
-  # 模块：build
-  # 目标：针对每个 config 子目录做一遍构建并发布 .img.gz
-  # -----------------------------------------------------------------
-  build:
-    name: 构建 ${{ matrix.config }}
-    needs: prepare_matrix
-    runs-on: ubuntu-22.04
-
-    # 直接把上一步输出的单行 JSON 当作数组传给 strategy.matrix
-    strategy:
-      matrix:
-        # 把前一步输出的数组当做 include 列表
-        include: ${{ fromJson(needs.prepare_matrix.outputs.matrix) }}
-
-
-    env:
-      REPO_URL:    https://github.com/coolsnowwolf/lede
-      REPO_BRANCH: master
-      TZ:          Asia/Shanghai
-      CONFIG_DIR:  ${{ matrix.config }}
-
-    steps:
-      - name: 检出仓库
-        uses: actions/checkout@v3
-
-      - name: 初始化编译环境
-        env:
-          DEBIAN_FRONTEND: noninteractive
-        run: |
-          sudo df -hT
           sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
           sudo docker image prune --all --force
           sudo -E apt-get -qq update
@@ -89,85 +34,79 @@ jobs:
           # sudo chown $USER:$GROUPS /workdir
           sudo df -hT
 
-      - name: 创建 Loopback LVM 并挂载到 /workdir
+      - name: 获取 config 目录列表
+        id: get-configs
         run: |
-          sudo df -hT
-          mnt_size=$(expr $(df -h /mnt | tail -1 | awk '{print $4}' | sed 's/[[:alpha:]]//g' | sed 's/\..*//') - 1)
-          root_size=$(expr $(df -h / | tail -1 | awk '{print $4}' | sed 's/[[:alpha:]]//g' | sed 's/\..*//') - 4)
-          sudo truncate -s "${mnt_size}"G /mnt/mnt.img
-          sudo truncate -s "${root_size}"G /root.img
-          sudo losetup /dev/loop6 /mnt/mnt.img
-          sudo losetup /dev/loop7 /root.img
-          sudo pvcreate /dev/loop6
-          sudo pvcreate /dev/loop7
-          sudo vgcreate github /dev/loop6 /dev/loop7
-          sudo lvcreate -n runner -l 100%FREE github
-          sudo mkfs.xfs /dev/github/runner
-          sudo mkdir -p /workdir
-          sudo mount /dev/github/runner /workdir
-          sudo chown $USER:$GROUPS /workdir
-          df -Th
+          configs=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | jq -R . | jq -cs .)
+          echo "configs=$configs" >> $GITHUB_OUTPUT
 
-      - name: 克隆 OpenWrt 源码
-        working-directory: /workdir
+      - name: 顺序构建每个 config
+        id: build_loop
         run: |
-          git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" openwrt
-          ln -s /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+          configs=${{ steps.get-configs.outputs.configs }}
+          echo "发现配置列表: $configs"
+          # 将 configs 解析成数组
+          config_array=$(echo "$configs" | jq -r '.[]')
 
-      - name: 复制 .config 和自定义包
-        run: |
-          cp config/${CONFIG_DIR}/.config openwrt/.config
-          pkg=$(find config/${CONFIG_DIR} -mindepth 1 -maxdepth 1 -type d | head -n1)
-          cp -R "$pkg" openwrt/package/
+          for config_dir in $config_array; do
+            echo "开始构建配置: $config_dir"
 
-      - name: 自定义步骤 1 (diy-part1.sh)
-        run: |
-          chmod +x ./diy-part1.sh
-          cd openwrt && $GITHUB_WORKSPACE/diy-part1.sh
+            # 清理并重新克隆源码目录，保证干净环境
+            rm -rf openwrt
+            git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" openwrt
 
-      - name: 更新并安装 Feeds
-        run: |
-          cd openwrt
-          ./scripts/feeds update -a
-          ./scripts/feeds install -a
+            # 复制 .config 和自定义包
+            cp "config/$config_dir/$Config" openwrt/.config
+            pkg=$(find "config/$config_dir" -mindepth 1 -maxdepth 1 -type d | head -n1 || true)
+            if [ -n "$PKG" ]; then
+              cp -R "$PKG" openwrt/package/
+            fi
 
-      - name: 下载源码依赖并清理空包
-        run: |
-          cd openwrt
-          make defconfig
-          make download -j$(nproc) || true
-          find dl -size -1024c -delete
+            # 自定义步骤 1
+            if [ -f diy-part1.sh ]; then
+              chmod +x diy-part1.sh
+              cd openwrt && ../diy-part1.sh
+              cd ..
+            fi
 
-      - name: 自定义步骤 2 (diy-part2.sh)
-        run: |
-          chmod +x ./diy-part2.sh
-          cd openwrt && $GITHUB_WORKSPACE/diy-part2.sh
+            # 更新并安装 Feeds
+            cd openwrt
+            ./scripts/feeds update -a
+            ./scripts/feeds install -a
 
-      - name: 编译固件
-        id: compile
-        run: |
-          cd openwrt
-          make -j$(nproc) || make -j1 V=s
-          echo "status=success" >> $GITHUB_OUTPUT
+            # 下载源码依赖并清理空包
+            make defconfig
+            make download -j$(nproc) || true
+            find dl -size -1024c -delete
 
-      - name: 定位 .img.gz 固件
-        run: |
-          cd openwrt/bin/targets/*/*
-          img=$(ls *.img.gz | head -n1)
-          echo "IMAGE_PATH=$(pwd)/$img" >> $GITHUB_ENV
+            # 自定义步骤 2
+            cd ..
+            if [ -f diy-part2.sh ]; then
+              chmod +x diy-part2.sh
+              cd openwrt && ../diy-part2.sh
+              cd ..
+            fi
 
-      - name: 生成 Release Tag
-        id: tag
-        run: |
-          ts=$(date +'%Y%m%d%H%M')
-          echo "release_tag=${CONFIG_DIR}_$ts" >> $GITHUB_OUTPUT
+            # 编译固件
+            cd openwrt
+            make -j$(nproc) || make -j1 V=s
+            cd ..
 
-      - name: 发布到 GitHub Release（仅上传 .img.gz）
-        uses: softprops/action-gh-release@v1
-        if: steps.compile.outputs.status == 'success'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.tag.outputs.release_tag }}
-          name:     ${{ steps.tag.outputs.release_tag }}
-          files:    ${{ env.IMAGE_PATH }}
+            # 定位 .img.gz 固件
+            img_path=$(find openwrt/bin/targets -type f -name '*.img.gz' | head -n1)
+            if [ -z "$img_path" ]; then
+              echo "⚠️ 未找到固件文件，跳过上传"
+              continue
+            fi
+            echo "固件路径: $img_path"
+
+            # 生成 Release Tag
+            ts=$(date +'%Y%m%d%H%M%S')
+            release_tag="${config_dir}_$ts"
+            echo "生成 Tag: $release_tag"
+
+            # 上传固件到 GitHub Release
+            gh release create "$release_tag" "$img_path" --title "$release_tag" --notes "自动发布固件"
+
+            echo "完成构建并上传: $config_dir"
+          done
