@@ -1,128 +1,187 @@
-name: OpenWrt Builder
+# ===================================================================
+# GitHub Actions Workflow：OpenWrt 矩阵化构建并发布 .img.gz 固件
+# 功能模块说明：
+#   1. prepare_matrix：扫描 config/ 下子目录，生成构建矩阵
+#   2. build        ：针对每个配置执行完整构建流程
+#                      并将 .img.gz 上传至 GitHub Release
+# ===================================================================
+
+name: OpenWrt 矩阵化构建
 
 on:
   workflow_dispatch:
 
 jobs:
-  generate-matrix:
-    name: Generate Build Matrix
-    runs-on: ubuntu-latest
+  # -----------------------------------------------------------------
+  # 模块：prepare_matrix
+  # 目标：扫描 config/ 下所有一级子目录，生成 GitHub Actions 矩阵
+  # 输出：matrix JSON（包含所有 config 子目录名称）
+  # -----------------------------------------------------------------
+  prepare_matrix:
+    name: 准备配置矩阵
+    runs-on: ubuntu-22.04
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      # 子步骤：检出当前仓库代码
+      - name: 检出代码
+        uses: actions/checkout@v3
 
-      - name: Set build matrix from config/
+      # 子步骤：安装 jq 工具，用于处理 JSON
+      - name: 安装 jq 工具
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -qq -y jq
+
+      # 子步骤：扫描 config/ 目录生成矩阵 JSON
+      - name: 生成配置矩阵
         id: set-matrix
         run: |
-          dirs=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n')
-          json=$(echo "$dirs" | jq -R . | jq -s '{config: .}')
-          echo "matrix=$json" >> $GITHUB_OUTPUT
+          # 查找 config/ 下所有一级子目录名称，拼成 JSON 数组
+          configs=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n' \
+                    | jq -R . | jq -cs .)
 
+          # 将数组转换成符合 GitHub Actions include 矩阵格式
+          matrix=$(jq -n --argjson arr "$configs" '$arr | map({config: .}) | {include: .}')
+
+          # 设置输出参数 matrix
+          echo "::set-output name=matrix::$matrix"
+
+
+  # -----------------------------------------------------------------
+  # 模块：build
+  # 目标：对 prepare_matrix 中的每个配置运行完整构建流程
+  #       复制 .config、自定义包，执行编译，并发布 .img.gz
+  # -----------------------------------------------------------------
   build:
-    needs: generate-matrix
+    name: 构建 ${{ matrix.config }}
+    needs: prepare_matrix
     runs-on: ubuntu-22.04
-    strategy:
-      matrix: ${{fromJson(needs.generate-matrix.outputs.matrix)}}
 
+    # 使用 prepare_matrix 输出的矩阵
+    strategy:
+      matrix: ${{ fromJson(needs.prepare_matrix.outputs.matrix) }}
+
+    # 环境变量
     env:
-      REPO_URL: https://github.com/coolsnowwolf/lede
-      REPO_BRANCH: master
-      FEEDS_CONF: feeds.conf.default
-      DIY_P1_SH: diy-part1.sh
-      DIY_P2_SH: diy-part2.sh
-      TZ: Asia/Shanghai
+      REPO_URL:       https://github.com/coolsnowwolf/lede
+      REPO_BRANCH:    master
+      TZ:             Asia/Shanghai
+      CONFIG_DIR:     ${{ matrix.config }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      # 子步骤：检出仓库代码
+      - name: 检出代码
+        uses: actions/checkout@v3
 
-      - name: Initialization environment
+      # 子步骤：初始化编译环境（安装依赖、设置时区）
+      - name: 初始化环境
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
-          sudo df -hT
-          sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
-          sudo docker image prune --all --force
-          sudo -E apt-get -qq update
-          sudo -E apt-get -qq install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp ninja-build p7zip p7zip-full patch pkgconf python2.7 python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
-          sudo -E apt-get -qq autoremove --purge
-          sudo -E apt-get -qq clean
+          sudo apt-get update -qq
+          sudo apt-get install -qq -y \
+            build-essential ccache git curl wget \
+            libncurses5-dev zlib1g-dev python3-distutils \
+            squashfs-tools xz-utils jq pv xfsprogs lvm2
           sudo timedatectl set-timezone "$TZ"
 
-      - name: Create simulated physical disk
+      # 子步骤：创建 Loopback LVM 并挂载到 /workdir 用于大容量编译
+      - name: 创建 Loopback LVM 并挂载到 /workdir
         run: |
-          sudo df -hT
+          # 计算可用空间并创建两块镜像文件
           mnt_size=$(expr $(df -h /mnt | tail -1 | awk '{print $4}' | sed 's/[[:alpha:]]//g' | sed 's/\..*//') - 1)
           root_size=$(expr $(df -h / | tail -1 | awk '{print $4}' | sed 's/[[:alpha:]]//g' | sed 's/\..*//') - 4)
           sudo truncate -s "${mnt_size}"G /mnt/mnt.img
           sudo truncate -s "${root_size}"G /root.img
+
+          # 绑定为 loop 设备并创建 LVM
           sudo losetup /dev/loop6 /mnt/mnt.img
           sudo losetup /dev/loop7 /root.img
-          sudo pvcreate /dev/loop6
-          sudo pvcreate /dev/loop7
+          sudo pvcreate /dev/loop6 /dev/loop7
           sudo vgcreate github /dev/loop6 /dev/loop7
           sudo lvcreate -n runner -l 100%FREE github
+
+          # 格式化并挂载到 /workdir
           sudo mkfs.xfs /dev/github/runner
           sudo mkdir -p /workdir
           sudo mount /dev/github/runner /workdir
           sudo chown $USER:$GROUPS /workdir
-          df -Th
 
-      - name: Clone source code
+      # 子步骤：在 /workdir 克隆 OpenWrt 源码
+      - name: 克隆 OpenWrt 源码
         working-directory: /workdir
         run: |
-          df -hT $PWD
-          git clone $REPO_URL -b $REPO_BRANCH openwrt
-          ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+          git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" openwrt
+          ln -s /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
-      - name: Load config and packages for ${{ matrix.config }}
+      # 子步骤：复制特定配置目录下的 .config 与自定义包
+      - name: 复制 .config 与自定义包
         run: |
-          cp config/${{ matrix.config }}/config_docker openwrt/.config
-          cp -r config/${{ matrix.config }}/*/ openwrt/package/
-          chmod -R 0755 openwrt/package/
-          ls -l openwrt/package/
+          # 复制 .config
+          cp config/${CONFIG_DIR}/config_docker openwrt/.config
 
-      - name: Run diy-part1.sh
+          # 查找子目录下第一个自定义包目录并复制
+          pkg=$(find config/${CONFIG_DIR} -mindepth 1 -maxdepth 1 -type d | head -n1)
+          cp -R "$pkg" openwrt/package/
+
+      # 子步骤：执行自定义预处理脚本 diy-part1.sh
+      - name: 自定义步骤 1 (diy-part1.sh)
         run: |
-          chmod +x $DIY_P1_SH
-          cd openwrt && $GITHUB_WORKSPACE/$DIY_P1_SH
+          chmod +x ./diy-part1.sh
+          cd openwrt && $GITHUB_WORKSPACE/diy-part1.sh
 
-      - name: Update feeds
-        run: cd openwrt && ./scripts/feeds update -a
-
-      - name: Install feeds
-        run: cd openwrt && ./scripts/feeds install -a
-
-      - name: Run diy-part2.sh
+      # 子步骤：更新并安装 OpenWrt feeds
+      - name: 更新并安装 Feeds
         run: |
-          chmod +x $DIY_P2_SH
-          cd openwrt && $GITHUB_WORKSPACE/$DIY_P2_SH
+          cd openwrt
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
 
-      - name: Download package
+      # 子步骤：下载所有源码依赖，清理空包
+      - name: 下载所有源码依赖
         run: |
           cd openwrt
           make defconfig
-          make download -j$(nproc)
-          find dl -size -1024c -exec rm -f {} \;
+          make download -j$(nproc) || true
+          find dl -size -1024c -delete
 
-      - name: Compile the firmware
+      # 子步骤：执行自定义后处理脚本 diy-part2.sh
+      - name: 自定义步骤 2 (diy-part2.sh)
+        run: |
+          chmod +x ./diy-part2.sh
+          cd openwrt && $GITHUB_WORKSPACE/diy-part2.sh
+
+      # 子步骤：编译 OpenWrt 固件
+      - name: 编译固件
+        id: compile
         run: |
           cd openwrt
           make -j$(nproc) || make -j1 V=s
+          echo "status=success" >> $GITHUB_OUTPUT
 
-      - name: Organize output
+      # 子步骤：定位生成的 .img.gz 固件文件路径
+      - name: 定位 .img.gz 固件
         run: |
           cd openwrt/bin/targets/*/*
-          mkdir -p $GITHUB_WORKSPACE/output
-          find . -type f -name "*.img.gz" -exec cp {} $GITHUB_WORKSPACE/output/ \;
+          img=$(ls *.img.gz | head -n1)
+          echo "IMAGE_PATH=$(pwd)/$img" >> $GITHUB_ENV
 
-      - name: Upload to GitHub Releases
-        uses: softprops/action-gh-release@v2
+      # 子步骤：生成 GitHub Release Tag，格式：<配置>_YYYYMMDDHHMM
+      - name: 生成发布 Tag
+        id: tag
+        run: |
+          ts=$(date +'%Y%m%d%H%M')
+          tag="${CONFIG_DIR}_${ts}"
+          echo "release_tag=$tag" >> $GITHUB_OUTPUT
+
+      # 子步骤：创建 GitHub Release 并上传 .img.gz 文件
+      - name: 创建 GitHub Release 并上传固件
+        uses: softprops/action-gh-release@v1
+        if: steps.compile.outputs.status == 'success'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ matrix.config }}_${{ github.run_id }}_${{ github.run_attempt }}
-          name: ${{ matrix.config }} build
-          files: output/*.img.gz
+          tag_name: ${{ steps.tag.outputs.release_tag }}
+          name:     ${{ steps.tag.outputs.release_tag }}
+          files:    ${{ env.IMAGE_PATH }}
