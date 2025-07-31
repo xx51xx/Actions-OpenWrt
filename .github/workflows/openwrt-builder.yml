@@ -23,12 +23,12 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -qq -y jq
 
-          sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
-          sudo docker image prune --all --force
-          sudo -E apt-get -qq update
-          sudo -E apt-get -qq install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp ninja-build p7zip p7zip-full patch pkgconf python2.7 python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
-          sudo -E apt-get -qq autoremove --purge
-          sudo -E apt-get -qq clean
+          # sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          # sudo docker image prune --all --force
+          # sudo -E apt-get -qq update
+          # sudo -E apt-get -qq install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp ninja-build p7zip p7zip-full patch pkgconf python2.7 python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
+          # sudo -E apt-get -qq autoremove --purge
+          # sudo -E apt-get -qq clean
           sudo timedatectl set-timezone "$TZ"
           # sudo mkdir -p /workdir
           # sudo chown $USER:$GROUPS /workdir
@@ -49,48 +49,50 @@ jobs:
           config_array=$(echo "$configs" | jq -r '.[]')
 
           for config_dir in $config_array; do
-            echo "开始构建配置: $config_dir"
+            # echo "开始构建配置: $config_dir"
 
-            # 清理并重新克隆源码目录，保证干净环境
-            rm -rf openwrt
-            git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" openwrt
+            # # 清理并重新克隆源码目录，保证干净环境
+            # rm -rf openwrt
+            # git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" openwrt
 
-            # 复制 .config 和自定义包
-            cp "config/$config_dir/$Config" openwrt/.config
-            pkg="config/$config_dir/$PKGS"
-            if [ -d "$pkg" ]; then
-              cp -R "$pkg" openwrt/package/
-            fi
+            # # 复制 .config 和自定义包
+            # cp "config/$config_dir/$Config" openwrt/.config
+            # pkg="config/$config_dir/$PKGS"
+            # if [ -d "$pkg" ]; then
+            #   cp -R "$pkg" openwrt/package/
+            # fi
 
-            # 自定义步骤 1
-            if [ -f diy-part1.sh ]; then
-              chmod +x diy-part1.sh
-              cd openwrt && ../diy-part1.sh
-              cd ..
-            fi
+            # # 自定义步骤 1
+            # if [ -f diy-part1.sh ]; then
+            #   chmod +x diy-part1.sh
+            #   cd openwrt && ../diy-part1.sh
+            #   cd ..
+            # fi
 
-            # 更新并安装 Feeds
-            cd openwrt
-            ./scripts/feeds update -a
-            ./scripts/feeds install -a
+            # # 更新并安装 Feeds
+            # cd openwrt
+            # ./scripts/feeds update -a
+            # ./scripts/feeds install -a
 
-            # 下载源码依赖并清理空包
-            make defconfig
-            make download -j$(nproc) || true
-            find dl -size -1024c -delete
+            # # 下载源码依赖并清理空包
+            # make defconfig
+            # make download -j$(nproc) || true
+            # find dl -size -1024c -delete
 
-            # 自定义步骤 2
-            cd ..
-            if [ -f diy-part2.sh ]; then
-              chmod +x diy-part2.sh
-              cd openwrt && ../diy-part2.sh
-              cd ..
-            fi
+            # # 自定义步骤 2
+            # cd ..
+            # if [ -f diy-part2.sh ]; then
+            #   chmod +x diy-part2.sh
+            #   cd openwrt && ../diy-part2.sh
+            #   cd ..
+            # fi
 
-            # 编译固件
-            cd openwrt
-            make -j$(nproc) || make -j1 V=s
-            cd ..
+            # # 编译固件
+            # cd openwrt
+            # make -j$(nproc) || make -j1 V=s
+            # cd ..
+
+            dd if=/dev/zero of=hello-openwrt.img.gz bs=1M count=1
 
             # 定位 .img.gz 固件
             # —— 安装并登录 gh CLI（只执行一次，可放到 workflow 开头） —— 
