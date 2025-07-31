@@ -92,7 +92,8 @@ jobs:
             # make -j$(nproc) || make -j1 V=s
             # cd ..
 
-            dd if=/dev/zero of=hello-openwrt.img.gz bs=1M count=1
+            mkdir -P openwrt/bin/targets/xx/
+            dd if=/dev/zero of=openwrt/bin/targets/xx/hello-openwrt.img.gz bs=1M count=1
 
             # 定位 .img.gz 固件
             img_path=$(find openwrt/bin/targets -type f -name '*.img.gz' | head -n1)
