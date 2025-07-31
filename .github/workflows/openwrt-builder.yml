@@ -1,33 +1,21 @@
-#
-# https://github.com/P3TERX/Actions-OpenWrt
-#
-# File: .github/workflows/openwrt-bulder.yml
-# Description: Build OpenWrt using GitHub Actions
-#
-# Copyright (c) 2019-2024 P3TERX <https://p3terx.com>
-#
-# This is free software, licensed under the MIT License.
-# See /LICENSE for more information.
-#
-
 name: OpenWrt Builder
 
 on:
-  repository_dispatch:
-  workflow_dispatch:
+  repository_dispatch:        # 当外部仓库触发事件（如 webhook）时运行
+  workflow_dispatch:          # 允许手动触发该工作流
 
 env:
-  REPO_URL: https://github.com/coolsnowwolf/lede
-  REPO_BRANCH: master
-  FEEDS_CONF: feeds.conf.default
-  CONFIG_FILE: config_docker
-  DIY_P1_SH: diy-part1.sh
-  DIY_P2_SH: diy-part2.sh
-  DIY_PACKAGE: hello-openwrt
-  UPLOAD_BIN_DIR: false
-  UPLOAD_FIRMWARE: true
-  UPLOAD_RELEASE: true
-  TZ: Asia/Shanghai
+  REPO_URL: https://github.com/coolsnowwolf/lede      # OpenWrt 源码仓库地址
+  REPO_BRANCH: master                                  # 要使用的分支
+  FEEDS_CONF: feeds.conf.default                       # feeds 配置文件（默认）
+  CONFIG_FILE: config_docker                           # 用作配置文件的路径（如 .config）
+  DIY_P1_SH: diy-part1.sh                              # 自定义第一个补丁脚本
+  DIY_P2_SH: diy-part2.sh                              # 自定义第二个补丁脚本
+  DIY_PACKAGE: hello-openwrt                           # 自定义软件包目录
+  UPLOAD_BIN_DIR: false                                # 是否上传整个 bin 目录
+  UPLOAD_FIRMWARE: true                                # 是否上传固件文件
+  UPLOAD_RELEASE: true                                 # 是否创建 GitHub Release
+  TZ: Asia/Shanghai                                    # 设置时区为上海时间
 
 jobs:
   build:
@@ -35,26 +23,29 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@main
+      uses: actions/checkout@main                      # 检出当前仓库代码
 
     - name: Initialization environment
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
+        # 显示磁盘使用情况
         sudo df -hT
+        # 清理不必要的内容释放空间
         sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
         sudo docker image prune --all --force
+        # 安装编译 OpenWrt 所需的依赖
         sudo -E apt-get -qq update
         sudo -E apt-get -qq install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp ninja-build p7zip p7zip-full patch pkgconf python2.7 python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
         sudo -E apt-get -qq autoremove --purge
         sudo -E apt-get -qq clean
+        # 设置系统时区
         sudo timedatectl set-timezone "$TZ"
-        # sudo mkdir -p /workdir
-        # sudo chown $USER:$GROUPS /workdir
         sudo df -hT
-        
+
     - name: Create simulated physical disk
       run: |
+        # 创建虚拟磁盘用于绕过 GitHub Actions 空间限制
         sudo df -hT
         mnt_size=$(expr $(df -h /mnt | tail -1 | awk '{print $4}' | sed 's/[[:alpha:]]//g' | sed 's/\..*//') - 1)
         root_size=$(expr $(df -h / | tail -1 | awk '{print $4}' | sed 's/[[:alpha:]]//g' | sed 's/\..*//') - 4)
@@ -75,16 +66,16 @@ jobs:
     - name: Clone source code
       working-directory: /workdir
       run: |
-        df -hT $PWD
+        # 克隆 OpenWrt 源码
         git clone $REPO_URL -b $REPO_BRANCH openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
-        
+
     - name: Load custom feeds
       run: |
+        # 如果有自定义 feeds.conf，替换原始文件
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
+        # 移动自定义包目录到 openwrt/package/
         mv $DIY_PACKAGE openwrt/package/
-        ls -lh openwrt/package/
-        ls -lh openwrt/package/$DIY_PACKAGE/
         chmod -R 0755 openwrt/package/$DIY_PACKAGE/
         chmod +x $DIY_P1_SH
         cd openwrt
@@ -95,17 +86,18 @@ jobs:
 
     - name: Install feeds
       run: cd openwrt && ./scripts/feeds install -a
+
     - name: Download package
       id: package
       run: |
         cd openwrt
         make defconfig
         make download -j$(nproc)
-        find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
     - name: Load custom configuration
       run: |
+        # 加载 files 和 .config
         [ -e files ] && mv files openwrt/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
         chmod +x $DIY_P2_SH
@@ -116,7 +108,6 @@ jobs:
       id: compile
       run: |
         cd openwrt
-        echo -e "$(nproc) thread compile"
         make -j$(nproc) || make -j1 || make -j1 V=s
         echo "status=success" >> $GITHUB_OUTPUT
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
@@ -156,7 +147,6 @@ jobs:
       run: |
         echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
         touch release.txt
-        [ ${UPLOAD_GOFILE} = true && ${{ steps.gofile.outputs.url }} ] && echo "🔗 [GoFile](${{ steps.gofile.outputs.url }})" >> release.txt
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: Upload firmware to release
