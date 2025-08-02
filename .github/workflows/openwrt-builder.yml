@@ -98,7 +98,7 @@ jobs:
             cp -rf "$pkg" openwrt/package/
 
             # 更新并安装 Feeds
-            
+            cd openwrt
             ./scripts/feeds update -a
             ./scripts/feeds install -a
             
