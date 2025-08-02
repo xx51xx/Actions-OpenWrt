@@ -33,8 +33,7 @@ jobs:
           else
             REDIRECT=""
           fi
-          
-          # 强制root编译
+
           export FORCE_UNSAFE_CONFIGURE=1
 
           log "开始安装依赖与清理"
@@ -64,8 +63,6 @@ jobs:
 
           sudo mkdir -p /workdir
           sudo chown -R $USER:$GROUPS /workdir
-          
-          # sudo chmod 0755 $WORKSPACE
           sudo chown -R $USER:$GROUPS $WORKSPACE
 
           if [ ! -d "$BUILD_DIR" ]; then
@@ -102,22 +99,20 @@ jobs:
           log() { echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $1"; }
 
           log "开始克隆 OpenWrt 源码"
-          
           gitpkg="/openwrt_pkg"
           sudo mkdir -p "$gitpkg"
           sudo rm -rf "$gitpkg"/*
           sudo chmod 0755 "$gitpkg"
-          
-          sudo git clone --branch "$REPO_BRANCH" "$REPO_URL" "$gitpkg" >> $GITHUB_OUTPUT
+
+          sudo git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" "$gitpkg"
           sudo chmod -R 0755 "$gitpkg"
 
-          # log "移动源码文件到目录"
           shopt -s dotglob
           sudo mv -f "$gitpkg"/* "$BUILD_DIR"/
           sudo chmod -R 0755 "$BUILD_DIR"
           sudo chown $USER:$GROUPS "$BUILD_DIR"
           shopt -u dotglob
-          
+
           sudo rm -rf "$gitpkg"
           log "源码克隆完成"
 
@@ -133,8 +128,7 @@ jobs:
           else
             REDIRECT=""
           fi
-          
-          
+
           configs=${{ steps.get-configs.outputs.configs }}
           log "发现配置列表: $configs"
           config_array=$(echo "$configs" | jq -r '.[]')
@@ -158,14 +152,13 @@ jobs:
             cd "$BUILD_DIR"
             eval "./scripts/feeds update -a $REDIRECT"
             eval "./scripts/feeds install -a $REDIRECT"
-            
-            # 导入配置文件
+
             sudo cp -f "$WORKSPACE/config/$config_name/$CONFIG_FILE" "$BUILD_DIR/.config"
             custom_pkg_path="$WORKSPACE/config/$config_name/$CUSTOM_PKG_DIR"
             if [ -d "$custom_pkg_path" ]; then
               sudo cp -rf "$custom_pkg_path" "$BUILD_DIR/package/"
             fi
-            
+
             log "下载依赖包"
             eval "sudo make defconfig $REDIRECT"
             eval "sudo make download -j$(nproc) || make download -j1 || make download -j8 $REDIRECT"
@@ -189,7 +182,7 @@ jobs:
             fi
 
             find "$BUILD_DIR/bin/targets" -type f \( -name '*.img.gz' -o -name '*.bin' \) \
-              | grep -Ev 'kernel\.bin$|rootfs\.img\.gz$' \
+              | grep -Ev 'kernel\\.bin$|rootfs\\.img\\.gz$' \
               | while read -r img_file; do
                   base_name=$(basename "$img_file")
                   sudo cp "$img_file" "$WORKSPACE/img/${config_name}_$base_name"
