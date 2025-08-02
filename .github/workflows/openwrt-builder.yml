@@ -117,7 +117,7 @@ jobs:
             done
             
             # 清空编译好的包
-            rm -rf /openwrt/.comfig
+            rm -rf openwrt/.comfig
             rm -rf openwrt/bin/targets/*
             
           done
