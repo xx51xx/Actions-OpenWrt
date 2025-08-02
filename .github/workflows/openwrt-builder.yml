@@ -87,22 +87,29 @@ jobs:
               cd ..
             fi
 
-            # 重置配置
-            cd openwrt
-            make defconfig
-            cd ..
+
             
-            # 复制 .config 和自定义包
-            cp -f "config/$config_dir/$Config" openwrt/.config
-            pkg="config/$config_dir/$PKGS"
-            cp -rf "$pkg" openwrt/package/
+
 
             # 更新并安装 Feeds
             cd openwrt
             ./scripts/feeds update -a
             ./scripts/feeds install -a
+
+            # 重置配置
+            cd openwrt
+            make defconfig
+            cd ..
+
+            # 复制 .config 和自定义包
+            cd openwrt
+            cp -f "config/$config_dir/$Config" openwrt/.config
+            pkg="config/$config_dir/$PKGS"
+            cp -rf "$pkg" openwrt/package/ 
+            cd ..
             
             # 下载源码依赖
+            cd openwrt
             make download -j$(nproc)
             
             # 自定义步骤 2
