@@ -28,6 +28,8 @@ jobs:
             echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $*"
           }
 
+          echo "FORCE_UNSAFE_CONFIGURE=1" >> $GITHUB_ENV
+
           if [ "$LOG_SILENT" = "true" ]; then
             REDIRECT=">/dev/null 2>&1"
           else
