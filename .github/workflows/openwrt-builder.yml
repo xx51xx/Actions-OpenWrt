@@ -146,20 +146,20 @@ jobs:
 
             log "更新并安装 feeds"
             cd "$BUILD_DIR"
-            eval "sudo ./scripts/feeds update -a $REDIRECT"
-            eval "sudo ./scripts/feeds install -a $REDIRECT"
-
+            eval "sudo scripts/feeds update -a $REDIRECT"
+            eval "sudo scripts/feeds install -a $REDIRECT"
+            
+            log "下载依赖包"
+            eval "make download -j$(nproc) $REDIRECT"
+            
             log "生成默认配置"
-            eval "make defconfig $REDIRECT"
+            eval "sudo make defconfig $REDIRECT"
 
             sudo cp -f "$WORKSPACE/config/$config_name/$CONFIG_FILE" "$BUILD_DIR/.config"
             custom_pkg_path="$WORKSPACE/config/$config_name/$CUSTOM_PKG_DIR"
             if [ -d "$custom_pkg_path" ]; then
               sudo cp -rf "$custom_pkg_path" "$BUILD_DIR/package/"
             fi
-
-            log "下载依赖包"
-            eval "make download -j$(nproc) $REDIRECT"
 
             if [ -f diy-part2.sh ]; then
               log "执行自定义脚本 diy-part2.sh"
