@@ -61,6 +61,9 @@ jobs:
 
           sudo mkdir -p /workdir
           sudo chown $USER:$GROUPS /workdir
+          
+          sudo chmod 0755 $WORKSPACE
+          sudo chown $USER:$GROUPS $WORKSPACE
 
           if [ ! -d "$BUILD_DIR" ]; then
               sudo mkdir -p "$BUILD_DIR"
