@@ -15,7 +15,7 @@ jobs:
       CONFIG_FILE:     .config
       BUILD_DIR:       /  # OpenWrt源码工作目录
       WORKSPACE:       ${{ github.workspace }}
-      LOG_SILENT:      false  # true=静默模式，false=打印所有日志
+      LOG_SILENT:      true  # true=静默模式，false=打印所有日志
 
     steps:
       - name: 检出当前 GitHub 仓库
@@ -36,24 +36,24 @@ jobs:
 
           log "开始安装依赖与清理"
 
-          sudo df -hT $REDIRECT
-          sudo apt-get update -qq $REDIRECT
-          sudo apt-get install -qq -y jq $REDIRECT
+          eval "sudo df -hT $REDIRECT"
+          eval "sudo apt-get update -qq $REDIRECT"
+          eval "sudo apt-get install -qq -y jq $REDIRECT"
 
           sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
-          sudo docker image prune --all --force $REDIRECT
+          eval "sudo docker image prune --all --force $REDIRECT"
 
-          eval sudo -E apt-get -qq update $REDIRECT
-          eval sudo -E apt-get install -qq -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
+          eval "sudo -E apt-get -qq update $REDIRECT"
+          eval "sudo -E apt-get install -qq -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
             bzip2 ccache clang cmake cpio curl device-tree-compiler flex gawk gcc-multilib g++-multilib gettext \
             genisoimage git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev \
             libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev \
             libreadline-dev libssl-dev libtool llvm lrzsz msmtp ninja-build p7zip p7zip-full patch pkgconf \
             python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion \
-            swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev $REDIRECT
+            swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev $REDIRECT"
 
-          eval sudo -E apt-get -qq autoremove --purge $REDIRECT
-          eval sudo -E apt-get -qq clean $REDIRECT
+          eval "sudo -E apt-get -qq autoremove --purge $REDIRECT"
+          eval "sudo -E apt-get -qq clean $REDIRECT"
 
           sudo timedatectl set-timezone "$TZ"
 
@@ -66,9 +66,9 @@ jobs:
           echo "release_tag=$release_tag" >> $GITHUB_ENV
 
           mkdir -p img
-          
+
           log "依赖安装与清理完成"
-          sudo df -hT $REDIRECT
+          eval "sudo df -hT $REDIRECT"
 
       - name: 获取 config 目录列表
         id: get-configs
@@ -87,7 +87,7 @@ jobs:
             echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $*"
           }
           log "开始克隆 OpenWrt 源码"
-          sudo git clone --branch "$REPO_BRANCH" "$REPO_URL" "$BUILD_DIR"
+          eval "sudo git clone --branch \"$REPO_BRANCH\" \"$REPO_URL\" \"$BUILD_DIR\""
           log "源码克隆完成"
 
       - name: 构建每个 config 配置的固件
@@ -123,11 +123,11 @@ jobs:
 
             log "更新并安装 feeds"
             cd "$BUILD_DIR"
-            eval ./scripts/feeds update -a $REDIRECT
-            eval ./scripts/feeds install -a $REDIRECT
+            eval "./scripts/feeds update -a $REDIRECT"
+            eval "./scripts/feeds install -a $REDIRECT"
 
             log "生成默认配置"
-            eval make defconfig $REDIRECT
+            eval "make defconfig $REDIRECT"
 
             cp -f "$WORKSPACE/config/$config_name/$CONFIG_FILE" "$BUILD_DIR/.config"
             custom_pkg_path="$WORKSPACE/config/$config_name/$CUSTOM_PKG_DIR"
@@ -136,7 +136,7 @@ jobs:
             fi
 
             log "下载依赖包"
-            eval make download -j$(nproc) $REDIRECT
+            eval "make download -j$(nproc) $REDIRECT"
 
             if [ -f diy-part2.sh ]; then
               log "执行自定义脚本 diy-part2.sh"
@@ -145,7 +145,7 @@ jobs:
             fi
 
             log "开始编译，预计耗时 2 小时以上"
-            eval make V=s -j$(nproc) $REDIRECT
+            eval "make V=s -j$(nproc) $REDIRECT"
             log "固件编译完成"
 
             if [ -f config/$config_name/diy-part4.sh ]; then
