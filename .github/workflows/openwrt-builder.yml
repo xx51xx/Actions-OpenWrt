@@ -124,7 +124,9 @@ jobs:
           else
             REDIRECT=""
           fi
-
+          
+          export FORCE_UNSAFE_CONFIGURE=1  # 临时设置环境变量
+          
           configs=${{ steps.get-configs.outputs.configs }}
           log "发现配置列表: $configs"
           config_array=$(echo "$configs" | jq -r '.[]')
