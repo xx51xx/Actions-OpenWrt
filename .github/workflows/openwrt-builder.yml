@@ -58,7 +58,7 @@ jobs:
 
           sudo timedatectl set-timezone "$TZ"
           sudo hostname OpenWrt
-          sudi hostnamectl set - hostname OpenWrt
+          sudo hostnamectl set - hostname OpenWrt
 
           sudo mkdir -p /workdir
           sudo chown $USER:$GROUPS /workdir
