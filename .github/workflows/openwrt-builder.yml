@@ -55,7 +55,9 @@ jobs:
           configs=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | jq -R '@json' | jq -cs .)
           echo "configs=$configs" >> $GITHUB_OUTPUT
 
-          git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" openwrt
+          echo "开始克隆源代码"
+          git clone --branch "$REPO_BRANCH" "$REPO_URL" openwrt
+          echo "源代码克隆完成"
           
       - name: 顺序构建每个 config
         id: build_loop
@@ -65,14 +67,13 @@ jobs:
           # 将 configs 解析成数组
           config_array=$(echo "$configs" | jq -r '.[]')
           
-          
-          
           for config_dir in $config_array; do
           
             echo "开始构建配置: $config_dir"
             
             # 自定义步骤 1
             if [ -f diy-part1.sh ]; then
+              echo "开始执行 DIY脚本1"
               chmod +x diy-part1.sh
               cd openwrt && ../diy-part1.sh
               cd ..
@@ -89,11 +90,12 @@ jobs:
             ./scripts/feeds install -a
             
             # 下载源码依赖
-            make download -j$(nproc) || make -j1 V=s
+            make download -j$(nproc)
             
             # 自定义步骤 2
             cd ..
             if [ -f diy-part2.sh ]; then
+              echo "开始执行 DIY脚本2"
               chmod +x diy-part2.sh
               cd openwrt && ../diy-part2.sh
               cd ..
@@ -101,8 +103,10 @@ jobs:
             
             # 编译固件
             cd openwrt
-            make -j$(nproc) || make -j1 V=s
+            make V=s -j$(nproc)
+            make defconfig
             cd ..
+            
             # 拷贝固件到 img 并重命名（只保留 .img.gz 和 .bin，但排除 kernel.bin 和 rootfs.img.gz）
             find openwrt/bin/targets -type f \( -name '*.img.gz' -o -name '*.bin' \) \
               | grep -Ev 'kernel\.bin$|rootfs\.img\.gz$' \
@@ -113,11 +117,11 @@ jobs:
             done
             
             # 清空编译好的包
-            make defconfig
-            rm -rf .comfig
-            cd .. && rm -rf openwrt/bin/targets/*
+            rm -rf /openwrt/.comfig
+            rm -rf openwrt/bin/targets/*
             
           done
+          
       - name: 上传所有固件到 GitHub Release
         uses: softprops/action-gh-release@v2
         with:
