@@ -86,13 +86,20 @@ jobs:
       - name: 克隆 OpenWrt 源代码到根目录 /
         run: |
           echo "开始运行 克隆 OpenWrt 源代码到根目录 /"
-          log() {
-            echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $*"
-          }
+          
+          log() { echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $1"; }
+      
           log "开始克隆 OpenWrt 源码"
-          eval "sudo git clone --branch \"$REPO_BRANCH\" \"$REPO_URL\" \"$BUILD_DIR\""
-          log "源码克隆完成"
-
+          git clone --branch "$REPO_BRANCH" "$REPO_URL" /openwrt >> $GITHUB_ENV
+      
+          log "移动源码文件到根目录 /"
+          shopt -s dotglob
+          sudo mv /openwrt/* /
+          shopt -u dotglob
+          sudo chmod -R 0755 /
+      
+          log "源码克隆完成" 
+          
       - name: 构建每个 config 配置的固件
         run: |
           echo "开始运行 构建每个 config 配置的固件"
