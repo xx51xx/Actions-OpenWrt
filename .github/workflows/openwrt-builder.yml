@@ -1,155 +1,195 @@
-name: OpenWrt 构建发布
+name: OpenWrt 顺序构建发布
 
 on:
   workflow_dispatch:
 
 jobs:
-  build:
-    name: 构建并发布 OpenWrt 固件
+  build-sequential:
+    name: 顺序构建并发布固件
     runs-on: ubuntu-22.04
     env:
-      REPO_URL: https://github.com/coolsnowwolf/lede
-      REPO_BRANCH: master
-      TZ: Asia/Shanghai
-      CUSTOM_PKG_DIR: hello-openwrt
-      CONFIG_FILE: .config
-      OPENWRT_DIR: /workdir/openwrt
-      GITHUB_DIR: ${{ github.workspace }}
-      LOG_SILENT: true #日志开关
+      REPO_URL: https://github.com/coolsnowwolf/lede  # OpenWrt 源码仓库地址
+      REPO_BRANCH: master                            # 要克隆的分支
+      TZ: Asia/Shanghai                              # 时区设置
+      CUSTOM_PKG_DIR: hello-openwrt                  # 自定义包目录名（相对于 config 子目录）
+      CONFIG_FILE: .config                           # 配置文件名
+      OPENWRT_DIR: /workdir/openwrt                  # OpenWrt 源码构建目录
+      GITHUB_DIR: ${{ github.workspace }}            # 当前 GitHub 工作目录
+      LOG_SILENT: false                              # 是否静默日志输出（true 时抑制日志）
 
     steps:
-      - name: 检出代码
+      - name: 检出当前 GitHub 仓库
         uses: actions/checkout@v4
 
-      - name: 安装依赖并初始化
+      - name: 安装依赖及清理空间
         run: |
-          # 日志函数（是否静默由 LOG_SILENT 控制）
+          # 定义日志函数（带时间戳）
           log() {
-            if [ "$LOG_SILENT" != "true" ]; then
-              echo "[`date '+%Y-%m-%d-%H:%M:%S'`] $1"
-            fi
+            echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $*"
           }
 
-          log "开始设置环境变量"
+          # 设置强制跳过 root 检查的环境变量
           echo "FORCE_UNSAFE_CONFIGURE=1" >> $GITHUB_ENV
           export FORCE_UNSAFE_CONFIGURE=1
 
-          # 设置日志重定向开关
+          # 是否开启静默日志（控制输出重定向）
           if [ "$LOG_SILENT" = "true" ]; then
-            REDIRECT=" >/dev/null 2>&1"
+            REDIRECT=">/dev/null 2>&1"
           else
             REDIRECT=""
           fi
 
-          log "开始安装依赖"
-          sudo apt-get update -qq $REDIRECT
-          sudo apt-get install -y -qq build-essential clang flex bison g++ gawk gcc-multilib gettext git libncurses5-dev libssl-dev python3 unzip zlib1g-dev file wget $REDIRECT
+          log "开始安装依赖与清理空间"
+          eval "df -hT $REDIRECT"
 
-          log "设置时区和主机名"
-          sudo timedatectl set-timezone "$TZ" $REDIRECT
-          sudo hostname OpenWrt $REDIRECT
+          # 安装常用构建依赖
+          eval "sudo apt-get update -qq $REDIRECT"
+          eval "sudo apt-get install -y -qq \
+            ack antlr3 asciidoc autoconf automake autopoint bash bc binutils \
+            bison build-essential bzip2 ccache clang cmake cpio curl device-tree-compiler \
+            dos2unix fastjar fakeroot file flex g++ gawk gcc-multilib gettext \
+            git gperf haveged help2man intltool libglib2.0-dev libfuse-dev \
+            libgmp-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev \
+            libncursesw5-dev libpython3-dev libreadline-dev libssl-dev \
+            libtool libz-dev llvm lrzsz msmtp nano ninja-build patch \
+            pkgconf python3 python3-distutils python3-pyelftools \
+            python3-setuptools qemu-utils rsync scons squashfs-tools \
+            subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto zlib1g-dev $REDIRECT"
 
-          log "准备构建目录"
+          # 清理无用软件包
+          eval "sudo apt-get -qq autoremove --purge $REDIRECT"
+          eval "sudo apt-get -qq clean $REDIRECT"
+
+          # 设置主机信息
+          sudo timedatectl set-timezone "$TZ"
+          sudo hostname OpenWrt
+          sudo hostnamectl set-hostname OpenWrt
+
+          # 创建构建目录和输出目录
           sudo mkdir -p /workdir /img
-          sudo chown -R $(id -u):$(id -g) /workdir /img "$GITHUB_DIR"
+          sudo chown -R $(id -u):$(id -g) /workdir /img $GITHUB_DIR
 
+          # 若构建目录不存在则创建
           if [ ! -d "$OPENWRT_DIR" ]; then
             mkdir -p "$OPENWRT_DIR"
           fi
 
-          # 生成构建时间戳 tag
-          ts=$(date '+%Y%m%d%H%M%S')
-          echo "release_tag=OpenWRT_Build_$ts" >> $GITHUB_ENV
-          log "构建标签为 OpenWRT_Build_$ts"
+          # 生成用于 Release 的 tag 名
+          ts=$(date +'%Y%m%d%H%M%S')
+          release_tag="OpenWRT_Build_$ts"
+          echo "release_tag=$release_tag" >> $GITHUB_ENV
 
-      - name: 获取配置列表
-        id: configlist
-        run: |
-          echo "configs=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | jq -R -s -c 'split("\n") | map(select(. != ""))')" >> $GITHUB_OUTPUT
+          log "依赖安装与清理完成"
+          eval "df -hT $REDIRECT"
 
-      - name: 克隆 OpenWrt 源码
+      - name: 获取 config 目录列表
+        id: get-configs
         run: |
           log() {
-            if [ "$LOG_SILENT" != "true" ]; then
-              echo "[`date '+%Y-%m-%d-%H:%M:%S'`] $1"
-            fi
+            echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $*"
           }
+          log "获取 config 目录列表"
+          configs=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | jq -R '@json' | jq -cs .)
+          echo "configs=$configs" >> $GITHUB_OUTPUT
+          log "获取 config 目录完成"
+
+      - name: 克隆 OpenWrt 源代码到目录
+        run: |
+          log() { echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $1"; }
+
+          if [ "$LOG_SILENT" = "true" ]; then
+            REDIRECT=">/dev/null 2>&1"
+          else
+            REDIRECT=""
+          fi
 
           log "开始克隆 OpenWrt 源码"
-          mkdir -p "$GITHUB_DIR/openwrt_source"
-          git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" "$GITHUB_DIR/openwrt_source"
 
-          log "复制源码到构建目录"
+          TMP_DIR="$GITHUB_DIR/tmp_openwrt"
+          mkdir -p "$TMP_DIR"
+          rm -rf "$TMP_DIR"/*
+          eval "git clone --depth 1 --branch \"$REPO_BRANCH\" \"$REPO_URL\" \"$TMP_DIR\" $REDIRECT"
+
           shopt -s dotglob
-          cp -rf "$GITHUB_DIR/openwrt_source"/* "$OPENWRT_DIR"/
+          mkdir -p "$OPENWRT_DIR"
+          mv -f "$TMP_DIR"/* "$OPENWRT_DIR"/
           shopt -u dotglob
-          rm -rf "$GITHUB_DIR/openwrt_source"
-          log "克隆完成"
+          rm -rf "$TMP_DIR"
 
-      - name: 构建每个配置固件
+          log "源码克隆完成"
+
+      - name: 构建每个 config 配置的固件
         run: |
           log() {
-            if [ "$LOG_SILENT" != "true" ]; then
-              echo "[`date '+%Y-%m-%d-%H:%M:%S'`] $1"
-            fi
+            echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $*"
           }
 
-          configs=${{ steps.configlist.outputs.configs }}
-          for config_name in $(echo "$configs" | jq -r '.[]'); do
-            log "开始构建配置：$config_name"
+          if [ "$LOG_SILENT" = "true" ]; then
+            REDIRECT=">/dev/null 2>&1"
+          else
+            REDIRECT=""
+          fi
 
-            if [ -f "$GITHUB_DIR/diy-part1.sh" ]; then
-              chmod +x "$GITHUB_DIR/diy-part1.sh" && cd "$OPENWRT_DIR" && "$GITHUB_DIR/diy-part1.sh"
-            fi
+          configs=${{ steps.get-configs.outputs.configs }}
+          config_array=$(echo "$configs" | jq -r '.[]')
 
-            if [ -f "$GITHUB_DIR/config/$config_name/diy-part3.sh" ]; then
-              chmod +x "$GITHUB_DIR/config/$config_name/diy-part3.sh" && cd "$OPENWRT_DIR" && "$GITHUB_DIR/config/$config_name/diy-part3.sh"
-            fi
+          log "发现配置列表: $config_array"
+
+          for config_name in $config_array; do
+            log "开始构建配置: $config_name"
+
+            # 第一步预处理脚本
+            [ -f "$GITHUB_DIR/diy-part1.sh" ] && chmod +x "$GITHUB_DIR/diy-part1.sh" && cd "$OPENWRT_DIR" && "$GITHUB_DIR/diy-part1.sh"
+            # 第三步预处理脚本（按 config）
+            [ -f "$GITHUB_DIR/config/$config_name/diy-part3.sh" ] && chmod +x "$GITHUB_DIR/config/$config_name/diy-part3.sh" && cd "$OPENWRT_DIR" && "$GITHUB_DIR/config/$config_name/diy-part3.sh"
 
             log "更新 feeds"
             cd "$OPENWRT_DIR"
-            ./scripts/feeds update -a
-            ./scripts/feeds install -a
+            eval "./scripts/feeds update -a $REDIRECT"
+            eval "./scripts/feeds install -a $REDIRECT"
 
-            log "复制配置文件"
-            cp "$GITHUB_DIR/config/$config_name/$CONFIG_FILE" "$OPENWRT_DIR/.config"
+            # 拷贝 config 文件
+            cp -f "$GITHUB_DIR/config/$config_name/$CONFIG_FILE" "$OPENWRT_DIR/.config"
 
-            if [ -d "$GITHUB_DIR/config/$config_name/$CUSTOM_PKG_DIR" ]; then
-              cp -rf "$GITHUB_DIR/config/$config_name/$CUSTOM_PKG_DIR" "$OPENWRT_DIR/package/"
+            # 拷贝自定义包
+            pkg_dir="$GITHUB_DIR/config/$config_name/$CUSTOM_PKG_DIR"
+            if [ -d "$pkg_dir" ]; then
+              cp -rf "$pkg_dir" "$OPENWRT_DIR/package/"
             fi
 
-            log "执行 defconfig 和下载源码"
-            make -C "$OPENWRT_DIR" defconfig
-            make -C "$OPENWRT_DIR" download -j8 || make -C "$OPENWRT_DIR" download -j1
-            find "$OPENWRT_DIR/dl" -size -1024c -exec rm -f {} \;
+            log "准备编译环境"
+            eval "make defconfig $REDIRECT"
+            eval "make download -j$(nproc) || make download -j1 || make download -j8 $REDIRECT"
+            eval "find dl -size -1024c -exec rm -f {} \; $REDIRECT"
 
-            if [ -f "$GITHUB_DIR/diy-part2.sh" ]; then
-              chmod +x "$GITHUB_DIR/diy-part2.sh" && cd "$OPENWRT_DIR" && "$GITHUB_DIR/diy-part2.sh"
-            fi
+            # 第二步预处理脚本
+            [ -f "$GITHUB_DIR/diy-part2.sh" ] && chmod +x "$GITHUB_DIR/diy-part2.sh" && cd "$OPENWRT_DIR" && "$GITHUB_DIR/diy-part2.sh"
 
-            log "开始编译 OpenWrt"
-            make -C "$OPENWRT_DIR" -j$(nproc) || make -C "$OPENWRT_DIR" -j1
+            log "开始编译配置 $config_name"
+            eval "make -j$(nproc) V=s || make -j1 || make -j1 V=s $REDIRECT"
+            log "编译完成: $config_name"
 
-            if [ -f "$GITHUB_DIR/config/$config_name/diy-part4.sh" ]; then
-              chmod +x "$GITHUB_DIR/config/$config_name/diy-part4.sh" && cd "$OPENWRT_DIR" && "$GITHUB_DIR/config/$config_name/diy-part4.sh"
-            fi
+            # 第四步后处理脚本（按 config）
+            [ -f "$GITHUB_DIR/config/$config_name/diy-part4.sh" ] && chmod +x "$GITHUB_DIR/config/$config_name/diy-part4.sh" && cd "$OPENWRT_DIR" && "$GITHUB_DIR/config/$config_name/diy-part4.sh"
 
-            log "复制生成的固件文件"
+            # 拷贝 img 文件到输出目录 /img
             find "$OPENWRT_DIR/bin/targets" -type f \( -name '*.img.gz' -o -name '*.bin' \) \
-              | grep -Ev 'kernel\.bin$|rootfs\.img\.gz$' \
-              | while read file; do
-                  cp "$file" "/img/${config_name}_$(basename "$file")"
+              | grep -Ev 'kernel\\.bin$|rootfs\\.img\\.gz$' \
+              | while read -r img_file; do
+                  base_name=$(basename "$img_file")
+                  cp "$img_file" "/img/${config_name}_$base_name"
+                  log "输出文件: ${config_name}_$base_name"
                 done
 
-            log "清理构建目录"
+            # 清理 bin/targets 目录（避免交叉污染）
             rm -f "$OPENWRT_DIR/.config"
             rm -rf "$OPENWRT_DIR/bin/targets"/*
           done
 
-      - name: 上传固件到 Release
+      - name: 上传固件到 GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.release_tag }}
           name: ${{ env.release_tag }}
-          body: OpenWrt 自动构建固件合集
+          body: 自动构建上传的 OpenWrt 固件集合
           files: /img/*
