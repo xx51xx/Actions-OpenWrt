@@ -134,26 +134,26 @@ jobs:
 
             if [ -f diy-part1.sh ]; then
               log "执行自定义脚本 diy-part1.sh"
-              chmod +x diy-part1.sh
+              sudo chmod +x diy-part1.sh
               cd "$BUILD_DIR" && sudo "$WORKSPACE"/diy-part1.sh
             fi
 
             if [ -f config/$config_name/diy-part3.sh ]; then
               log "执行自定义脚本 diy-part3.sh"
-              chmod +x config/$config_name/diy-part3.sh
+              sudo chmod +x config/$config_name/diy-part3.sh
               cd "$BUILD_DIR" && sudo "$WORKSPACE"/config/$config_name/diy-part3.sh
             fi
 
             log "更新并安装 feeds"
             cd "$BUILD_DIR"
-            eval "sudo scripts/feeds update -a $REDIRECT"
-            eval "sudo scripts/feeds install -a $REDIRECT"
+            sudo eval "scripts/feeds update -a $REDIRECT"
+            sudo eval "scripts/feeds install -a $REDIRECT"
             
             log "下载依赖包"
-            eval "make download -j$(nproc) $REDIRECT"
+            sudo eval "make download -j$(nproc) $REDIRECT"
             
             log "生成默认配置"
-            eval "sudo make defconfig $REDIRECT"
+            sudo eval "make defconfig $REDIRECT"
 
             sudo cp -f "$WORKSPACE/config/$config_name/$CONFIG_FILE" "$BUILD_DIR/.config"
             custom_pkg_path="$WORKSPACE/config/$config_name/$CUSTOM_PKG_DIR"
@@ -163,17 +163,17 @@ jobs:
 
             if [ -f diy-part2.sh ]; then
               log "执行自定义脚本 diy-part2.sh"
-              chmod +x diy-part2.sh
+              sudo chmod +x diy-part2.sh
               cd "$BUILD_DIR" && sudo "$WORKSPACE"/diy-part2.sh
             fi
 
             log "开始编译，预计耗时 2 小时以上"
-            eval "make V=s -j$(nproc) $REDIRECT"
+            sudo eval "make V=s -j$(nproc) $REDIRECT"
             log "固件编译完成"
 
             if [ -f config/$config_name/diy-part4.sh ]; then
               log "执行自定义脚本 diy-part4.sh"
-              chmod +x config/$config_name/diy-part4.sh
+              sudo chmod +x config/$config_name/diy-part4.sh
               cd "$BUILD_DIR" && sudo "$WORKSPACE"/config/$config_name/diy-part4.sh
             fi
 
