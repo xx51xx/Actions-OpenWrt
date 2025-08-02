@@ -13,7 +13,7 @@ jobs:
       TZ:              Asia/Shanghai
       CUSTOM_PKG_DIR:  hello-openwrt
       CONFIG_FILE:     .config
-      BUILD_DIR:       /  # OpenWrt源码工作目录
+      BUILD_DIR:       /workdir/openwrt  # OpenWrt源码工作目录
       WORKSPACE:       ${{ github.workspace }}
       LOG_SILENT:      false  # true=静默模式，false=打印所有日志
 
