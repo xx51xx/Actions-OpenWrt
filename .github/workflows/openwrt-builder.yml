@@ -145,7 +145,7 @@ jobs:
             fi
 
             log "开始编译，预计耗时 2 小时以上"
-            eval make -j$(nproc) $REDIRECT
+            eval make V=s -j$(nproc) $REDIRECT
             log "固件编译完成"
 
             if [ -f config/$config_name/diy-part4.sh ]; then
