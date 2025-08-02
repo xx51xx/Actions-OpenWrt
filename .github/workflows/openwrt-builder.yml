@@ -138,7 +138,7 @@ jobs:
               cd "$BUILD_DIR" && sudo "$WORKSPACE"/diy-part1.sh
             fi
 
-            if [ -f config/$config_name/diy-part3.sh ]; then
+            if [ -f "$WORKSPACE/config/$config_name/diy-part3.sh" ]; then
               log "执行自定义脚本 diy-part3.sh"
               sudo chmod +x config/$config_name/diy-part3.sh
               cd "$BUILD_DIR" && sudo "$WORKSPACE"/config/$config_name/diy-part3.sh
@@ -146,14 +146,14 @@ jobs:
 
             log "更新并安装 feeds"
             cd "$BUILD_DIR"
-            sudo eval "scripts/feeds update -a $REDIRECT"
-            sudo eval "scripts/feeds install -a $REDIRECT"
+            eval "sudo scripts/feeds update -a $REDIRECT"
+            eval "sudo scripts/feeds install -a $REDIRECT"
             
             log "下载依赖包"
-            sudo eval "make download -j$(nproc) $REDIRECT"
+            eval "sudo make download -j$(nproc) $REDIRECT"
             
             log "生成默认配置"
-            sudo eval "make defconfig $REDIRECT"
+            eval "sudo make defconfig $REDIRECT"
 
             sudo cp -f "$WORKSPACE/config/$config_name/$CONFIG_FILE" "$BUILD_DIR/.config"
             custom_pkg_path="$WORKSPACE/config/$config_name/$CUSTOM_PKG_DIR"
@@ -161,17 +161,17 @@ jobs:
               sudo cp -rf "$custom_pkg_path" "$BUILD_DIR/package/"
             fi
 
-            if [ -f diy-part2.sh ]; then
+            if [ -f "$WORKSPACE/diy-part2.sh" ]; then
               log "执行自定义脚本 diy-part2.sh"
               sudo chmod +x diy-part2.sh
               cd "$BUILD_DIR" && sudo "$WORKSPACE"/diy-part2.sh
             fi
 
             log "开始编译，预计耗时 2 小时以上"
-            sudo eval "make V=s -j$(nproc) $REDIRECT"
+            eval "sudo make V=s -j$(nproc) $REDIRECT"
             log "固件编译完成"
 
-            if [ -f config/$config_name/diy-part4.sh ]; then
+            if [ -f "$WORKSPACE/config/$config_name/diy-part4.sh" ]; then
               log "执行自定义脚本 diy-part4.sh"
               sudo chmod +x config/$config_name/diy-part4.sh
               cd "$BUILD_DIR" && sudo "$WORKSPACE"/config/$config_name/diy-part4.sh
