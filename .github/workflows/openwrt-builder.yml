@@ -95,17 +95,21 @@ jobs:
           log() { echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $1"; }
 
           log "开始克隆 OpenWrt 源码"
-          sudo mkdir -p /o
-          sudo rm -rf /o/*
-          sudo chmod 0755 /openwrt
-          sudo git clone --branch "$REPO_BRANCH" "$REPO_URL" /openwrt >> $GITHUB_ENV >> $GITHUB_OUTPUT
-          sudo chmod -R 0755 /openwrt
+          
+          gitpkg="/openwrt_pkg"
+          sudo mkdir -p "$gitpkg"
+          sudo rm -rf "$gitpkg"/*
+          sudo chmod 0755 "$gitpkg"
+          
+          sudo git clone --branch "$REPO_BRANCH" "$REPO_URL" $gitpkg >> $GITHUB_ENV >> $GITHUB_OUTPUT
+          sudo chmod -R 0755 "$gitpkg"
 
-          # log "移动源码文件到根目录 /"
+          # log "移动源码文件到目录"
           shopt -s dotglob
-          sudo mv -f /o/* $BUILD_DIR
+          sudo mv -f "$gitpkg"/* "$BUILD_DIR"/
           shopt -u dotglob
-          sudo rm -rf /o
+          
+          sudo rm -rf "$gitpkg"
           log "源码克隆完成"
 
       - name: 构建每个 config 配置的固件
