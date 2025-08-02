@@ -8,150 +8,169 @@ jobs:
     name: 顺序构建并发布固件
     runs-on: ubuntu-22.04
     env:
-      REPO_URL:    https://github.com/coolsnowwolf/lede
-      REPO_BRANCH: master
-      TZ:          Asia/Shanghai
-      PKGS:         hello-openwrt
-      Config:      .config
+      REPO_URL:        https://github.com/coolsnowwolf/lede
+      REPO_BRANCH:     master
+      TZ:              Asia/Shanghai
+      CUSTOM_PKG_DIR:  hello-openwrt
+      CONFIG_FILE:     .config
+      BUILD_DIR:       /  # OpenWrt源码工作目录
+      WORKSPACE:       ${{ github.workspace }}
+      LOG_SILENT:      true  # true=静默模式，false=打印所有日志
+
     steps:
-      - name: 检出仓库
+      - name: 检出当前 GitHub 仓库
         uses: actions/checkout@v3
 
-      - name: 安装 jq（JSON 处理工具）
+      - name: 安装依赖及清理空间
         run: |
-          sudo df -hT
-          sudo apt-get update -qq
-          sudo apt-get install -qq -y jq
+          log() {
+            echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $*"
+          }
+
+          # 判断是否静默模式
+          if [ "$LOG_SILENT" = "true" ]; then
+            REDIRECT=">/dev/null 2>&1"
+          else
+            REDIRECT=""
+          fi
+
+          log "开始安装依赖与清理"
+
+          sudo df -hT $REDIRECT
+          sudo apt-get update -qq $REDIRECT
+          sudo apt-get install -qq -y jq $REDIRECT
+
           sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
-          sudo docker image prune --all --force
-          sudo -E apt-get -qq update
-          
-          sudo -E apt-get install -qq -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
-          bzip2 ccache clang cmake cpio curl device-tree-compiler flex gawk gcc-multilib g++-multilib gettext \
-          genisoimage git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev \
-          libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev \
-          libreadline-dev libssl-dev libtool llvm lrzsz msmtp ninja-build p7zip p7zip-full patch pkgconf \
-          python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion \
-          swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev   
-          
-          sudo -E apt-get -qq autoremove --purge
-          sudo -E apt-get -qq clean
+          sudo docker image prune --all --force $REDIRECT
+
+          eval sudo -E apt-get -qq update $REDIRECT
+          eval sudo -E apt-get install -qq -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
+            bzip2 ccache clang cmake cpio curl device-tree-compiler flex gawk gcc-multilib g++-multilib gettext \
+            genisoimage git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev \
+            libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev \
+            libreadline-dev libssl-dev libtool llvm lrzsz msmtp ninja-build p7zip p7zip-full patch pkgconf \
+            python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion \
+            swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev $REDIRECT
+
+          eval sudo -E apt-get -qq autoremove --purge $REDIRECT
+          eval sudo -E apt-get -qq clean $REDIRECT
+
           sudo timedatectl set-timezone "$TZ"
-          
+
           sudo mkdir -p /workdir
           sudo chown $USER:$GROUPS /workdir
-          
+
           ts=$(date +'%Y%m%d%H%M%S')
           release_tag="OpenWRT_Build_$ts"
+          log "release_tag=$release_tag"
           echo "release_tag=$release_tag" >> $GITHUB_ENV
+
           mkdir -p img
           
-          sudo df -hT
-          
+          log "依赖安装与清理完成"
+          sudo df -hT $REDIRECT
+
       - name: 获取 config 目录列表
         id: get-configs
         run: |
-        
+          log() {
+            echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $*"
+          }
+          log "获取 config 目录列表"
           configs=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | jq -R '@json' | jq -cs .)
           echo "configs=$configs" >> $GITHUB_OUTPUT
+          log "获取 config 目录列表完成"
 
-          echo "开始克隆源代码"
-          git clone --branch "$REPO_BRANCH" "$REPO_URL" openwrt
-          echo "源代码克隆完成"
-          
-      - name: 顺序构建每个 config
-        id: build_loop
+      - name: 克隆 OpenWrt 源代码到根目录 /
         run: |
+          log() {
+            echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $*"
+          }
+          log "开始克隆 OpenWrt 源码"
+          sudo git clone --branch "$REPO_BRANCH" "$REPO_URL" "$BUILD_DIR"
+          log "源码克隆完成"
+
+      - name: 构建每个 config 配置的固件
+        run: |
+          log() {
+            echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $*"
+          }
+
+          if [ "$LOG_SILENT" = "true" ]; then
+            REDIRECT=">/dev/null 2>&1"
+          else
+            REDIRECT=""
+          fi
+
           configs=${{ steps.get-configs.outputs.configs }}
-          echo "发现配置列表: $configs"
-          # 将 configs 解析成数组
+          log "发现配置列表: $configs"
           config_array=$(echo "$configs" | jq -r '.[]')
-          
-          for config_dir in $config_array; do
-          
-            echo "开始构建配置: $config_dir"
-            
-            # 自定义步骤 1
+
+          for config_name in $config_array; do
+            log "开始构建配置: $config_name"
+
             if [ -f diy-part1.sh ]; then
-              echo "开始执行 DIY脚本1"
+              log "执行自定义脚本 diy-part1.sh"
               chmod +x diy-part1.sh
-              cd openwrt && ../diy-part1.sh
-              cd ..
+              cd "$BUILD_DIR" && "$WORKSPACE"/diy-part1.sh
             fi
 
-            # 自定义步骤 3
-            if [ -f config/$config_dir/diy-part3.sh ]; then
-              echo "开始执行 DIY脚本3"
-              chmod +x config/$config_dir/diy-part3.sh
-              cd openwrt && ../config/$config_dir/diy-part3.sh
-              cd ..
+            if [ -f config/$config_name/diy-part3.sh ]; then
+              log "执行自定义脚本 diy-part3.sh"
+              chmod +x config/$config_name/diy-part3.sh
+              cd "$BUILD_DIR" && "$WORKSPACE"/config/$config_name/diy-part3.sh
             fi
 
-            # 更新并安装 Feeds
-            cd openwrt
-            ./scripts/feeds update -a
-            ./scripts/feeds install -a
-            cd ..
+            log "更新并安装 feeds"
+            cd "$BUILD_DIR"
+            eval ./scripts/feeds update -a $REDIRECT
+            eval ./scripts/feeds install -a $REDIRECT
 
-            # 重置配置
-            cd openwrt
-            make defconfig
-            cd ..
+            log "生成默认配置"
+            eval make defconfig $REDIRECT
 
-            # 复制 .config 和自定义包
-            cp -f "config/$config_dir/$Config" openwrt/.config
-            pkg="config/$config_dir/$PKGS"
-            cp -rf "$pkg" openwrt/package/ 
-            
-            # 下载源码依赖
-            cd openwrt
-            make download -j$(nproc)
-            cd ..
-            
-            # 自定义步骤 2
+            cp -f "$WORKSPACE/config/$config_name/$CONFIG_FILE" "$BUILD_DIR/.config"
+            custom_pkg_path="$WORKSPACE/config/$config_name/$CUSTOM_PKG_DIR"
+            if [ -d "$custom_pkg_path" ]; then
+              cp -rf "$custom_pkg_path" "$BUILD_DIR/package/"
+            fi
+
+            log "下载依赖包"
+            eval make download -j$(nproc) $REDIRECT
+
             if [ -f diy-part2.sh ]; then
-              echo "开始执行 DIY脚本2"
+              log "执行自定义脚本 diy-part2.sh"
               chmod +x diy-part2.sh
-              cd openwrt && ../diy-part2.sh
-              cd ..
+              cd "$BUILD_DIR" && "$WORKSPACE"/diy-part2.sh
             fi
-            
-            # 编译固件
-            cd openwrt
-            # make V=s -j$(nproc)
-            echo "开始编译固件，预计2小时30分钟"
-            make -j$(nproc) >/dev/null 2>&1
-            echo "固件编译完成"
-            cd ..
 
-            # 自定义步骤 4
-            if [ -f config/$config_dir/diy-part4.sh ]; then
-              echo "开始执行 DIY脚本4"
-              chmod +x config/$config_dir/diy-part4.sh
-              cd openwrt && ../config/$config_dir/diy-part4.sh
-              cd ..
+            log "开始编译，预计耗时 2 小时以上"
+            eval make -j$(nproc) $REDIRECT
+            log "固件编译完成"
+
+            if [ -f config/$config_name/diy-part4.sh ]; then
+              log "执行自定义脚本 diy-part4.sh"
+              chmod +x config/$config_name/diy-part4.sh
+              cd "$BUILD_DIR" && "$WORKSPACE"/config/$config_name/diy-part4.sh
             fi
-            
-            # 拷贝固件到 img 并重命名（只保留 .img.gz 和 .bin，但排除 kernel.bin 和 rootfs.img.gz）
-            find openwrt/bin/targets -type f \( -name '*.img.gz' -o -name '*.bin' \) \
+
+            find "$BUILD_DIR/bin/targets" -type f \( -name '*.img.gz' -o -name '*.bin' \) \
               | grep -Ev 'kernel\.bin$|rootfs\.img\.gz$' \
-              | while read -r img_path; do
-                file_name=$(basename "$img_path")
-                cp "$img_path" "./img/${config_dir}_${file_name}"
-                echo "要发布的编译文件: ${config_dir}_${file_name}"
-            done
-            
-            # 清空编译好的包
-            rm -rf openwrt/.config
-            rm -rf openwrt/bin/targets/*
-            
+              | while read -r img_file; do
+                  base_name=$(basename "$img_file")
+                  cp "$img_file" "$WORKSPACE/img/${config_name}_$base_name"
+                  log "生成文件: ${config_name}_$base_name"
+              done
+
+            rm -rf "$BUILD_DIR/.config"
+            rm -rf "$BUILD_DIR/bin/targets/*"
+
           done
-          
-      - name: 上传所有固件到 GitHub Release
+
+      - name: 上传固件到 GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.release_tag }}
           name: ${{ env.release_tag }}
           body: 自动构建上传的 OpenWrt 固件集合
           files: img/*
-    
