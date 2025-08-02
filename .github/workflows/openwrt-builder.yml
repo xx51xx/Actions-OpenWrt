@@ -91,9 +91,9 @@ jobs:
       
           log "开始克隆 OpenWrt 源码"
           mkdir -p /openwrt
-          git clone --branch "$REPO_BRANCH" "$REPO_URL" /openwrt >> $GITHUB_ENV
+          git clone --branch "$REPO_BRANCH" "$REPO_URL" /openwrt >> $GITHUB_ENV >> $GITHUB_OUTPUT
       
-          log "移动源码文件到根目录 /"
+          log "移动源码文件到根目录 /" >> $GITHUB_OUTPUT
           shopt -s dotglob
           sudo mv /openwrt/* /
           shopt -u dotglob
