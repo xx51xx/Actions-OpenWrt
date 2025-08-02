@@ -88,6 +88,7 @@ jobs:
             fi
             
             # 复制 .config 和自定义包
+            make defconfig
             cp -f "config/$config_dir/$Config" openwrt/.config
             pkg="config/$config_dir/$PKGS"
             cp -rf "$pkg" openwrt/package/
@@ -112,7 +113,6 @@ jobs:
             # 编译固件
             cd openwrt
             make V=s -j$(nproc)
-            make defconfig
             cd ..
 
             # 自定义步骤 4
