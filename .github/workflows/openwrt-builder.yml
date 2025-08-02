@@ -144,6 +144,13 @@ jobs:
               cd "$BUILD_DIR" && sudo "$WORKSPACE"/config/$config_name/diy-part3.sh
             fi
 
+            # 导入配置文件
+            sudo cp -f "$WORKSPACE/config/$config_name/$CONFIG_FILE" "$BUILD_DIR/.config"
+            custom_pkg_path="$WORKSPACE/config/$config_name/$CUSTOM_PKG_DIR"
+            if [ -d "$custom_pkg_path" ]; then
+              sudo cp -rf "$custom_pkg_path" "$BUILD_DIR/package/"
+            fi
+
             log "更新并安装 feeds"
             cd "$BUILD_DIR"
             eval "sudo ./scripts/feeds update -a $REDIRECT"
@@ -154,12 +161,6 @@ jobs:
             
             # log "生成默认配置"
             # eval "sudo make defconfig $REDIRECT"
-
-            sudo cp -f "$WORKSPACE/config/$config_name/$CONFIG_FILE" "$BUILD_DIR/.config"
-            custom_pkg_path="$WORKSPACE/config/$config_name/$CUSTOM_PKG_DIR"
-            if [ -d "$custom_pkg_path" ]; then
-              sudo cp -rf "$custom_pkg_path" "$BUILD_DIR/package/"
-            fi
 
             if [ -f "$WORKSPACE/diy-part2.sh" ]; then
               log "执行自定义脚本 diy-part2.sh"
