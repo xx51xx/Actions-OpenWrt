@@ -99,7 +99,7 @@ jobs:
 
           # log "移动源码文件到根目录 /"
           shopt -s dotglob
-          sudo mv /openwrt/* /
+          sudo mv -f /openwrt/* /
           shopt -u dotglob
           sudo rm -rf /openwrt
           log "源码克隆完成"
