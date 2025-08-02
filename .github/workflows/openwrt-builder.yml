@@ -23,7 +23,7 @@ jobs:
 
       - name: 安装依赖及清理空间
         run: |
-          echo "1️⃣ 开始运行 安装依赖及清理空间" > /dev/null 2>&1
+          echo "开始运行 安装依赖及清理空间" > /dev/null 2>&1
           log() {
             echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $*"
           }
@@ -57,6 +57,8 @@ jobs:
           eval "sudo -E apt-get -qq clean $REDIRECT"
 
           sudo timedatectl set-timezone "$TZ"
+          sudo hostname OpenWrt
+          sudi hostnamectl set - hostname OpenWrt
 
           sudo mkdir -p /workdir
           sudo chown $USER:$GROUPS /workdir
@@ -74,7 +76,7 @@ jobs:
       - name: 获取 config 目录列表
         id: get-configs
         run: |
-          echo "2️⃣ 开始运行 获取 config 目录列表" > /dev/null 2>&1
+          echo "开始运行 获取 config 目录列表" > /dev/null 2>&1
           log() {
             echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $*"
           }
@@ -85,12 +87,12 @@ jobs:
 
       - name: 克隆 OpenWrt 源代码到根目录 /
         run: |
-          echo "3️⃣ 开始运行 克隆 OpenWrt 源代码到根目录 /" > /dev/null 2>&1
+          echo "开始运行 克隆 OpenWrt 源代码到根目录 /" > /dev/null 2>&1
           
           log() { echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $1"; }
       
           log "开始克隆 OpenWrt 源码"
-          mkdir -p /openwrt
+          sduo mkdir -p /openwrt
           git clone --branch "$REPO_BRANCH" "$REPO_URL" /openwrt >> $GITHUB_ENV >> $GITHUB_OUTPUT
       
           log "移动源码文件到根目录 /" >> $GITHUB_OUTPUT
@@ -103,7 +105,7 @@ jobs:
           
       - name: 构建每个 config 配置的固件
         run: |
-          echo "4️⃣ 开始运行 构建每个 config 配置的固件" > /dev/null 2>&1
+          echo "开始运行 构建每个 config 配置的固件" > /dev/null 2>&1
           log() {
             echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $*"
           }
