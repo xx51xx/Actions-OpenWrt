@@ -164,7 +164,7 @@ jobs:
             fi
             
             log "下载依赖包"
-            eval "make defconfig $REDIRECT"
+            eval "sudo make defconfig $REDIRECT"
             eval "sudo make download -j$(nproc) || make download -j1 || make download -j8 $REDIRECT"
             eval "find dl -size -1024c -exec ls -l {} \; $REDIRECT"
             eval "find dl -size -1024c -exec rm -f {} \; $REDIRECT"
