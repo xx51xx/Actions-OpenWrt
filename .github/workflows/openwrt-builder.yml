@@ -109,7 +109,7 @@ jobs:
 
           shopt -s dotglob
           sudo mv -f "$gitpkg"/* "$BUILD_DIR"/
-          sudo chmod -R 0755 "$BUILD_DIR"
+          # sudo chmod -R 0755 "$BUILD_DIR"
           sudo chown $USER:$GROUPS "$BUILD_DIR"
           shopt -u dotglob
 
