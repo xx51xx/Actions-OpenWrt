@@ -13,22 +13,18 @@ jobs:
       TZ:              Asia/Shanghai
       CUSTOM_PKG_DIR:  hello-openwrt
       CONFIG_FILE:     .config
-      BUILD_DIR:       /workdir/openwrt  # OpenWrt源码工作目录
+      BUILD_DIR:       /workdir/openwrt
       WORKSPACE:       ${{ github.workspace }}
-      LOG_SILENT:      false  # true=静默模式，false=打印所有日志
+      LOG_SILENT:      false
 
     steps:
       - name: 检出当前 GitHub 仓库
-        uses: actions/checkout@main
+        uses: actions/checkout@v3
 
       - name: 安装依赖及清理空间
         run: |
-          echo "正在运行 安装依赖及清理空间" > /dev/null 2>&1
-          log() {
-            echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $*"
-          }
-
           echo "FORCE_UNSAFE_CONFIGURE=1" >> $GITHUB_ENV
+          export FORCE_UNSAFE_CONFIGURE=1
 
           if [ "$LOG_SILENT" = "true" ]; then
             REDIRECT=">/dev/null 2>&1"
@@ -36,163 +32,110 @@ jobs:
             REDIRECT=""
           fi
 
-          export FORCE_UNSAFE_CONFIGURE=1
+          log() {
+            echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $*"
+          }
 
-          log "开始安装依赖与清理"
+          log "设置时区与主机名"
+          sudo timedatectl set-timezone "$TZ"
+          sudo hostname OpenWrt
 
-          eval "sudo df -hT $REDIRECT"
+          log "安装依赖"
           eval "sudo apt-get update -qq $REDIRECT"
-          eval "sudo apt-get install -qq -y jq $REDIRECT"
+          eval "sudo apt-get install -qq -y jq build-essential git python3 rsync curl $REDIRECT"
 
+          log "清理空间"
           sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
           eval "sudo docker image prune --all --force $REDIRECT"
 
-          eval "sudo -E apt-get -qq update $REDIRECT"
-          eval "sudo -E apt-get install -qq -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
-          bzip2 ccache clang cmake cpio curl device-tree-compiler flex gawk gcc-multilib g++-multilib gettext \
-          genisoimage git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev \
-          libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev \
-          libreadline-dev libssl-dev libtool llvm lrzsz msmtp ninja-build p7zip p7zip-full patch pkgconf \
-          python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion \
-          swig texinfo uglifyjs upx-ucl unzip vim wget $REDIRECT"
-
-          eval "sudo -E apt-get -qq autoremove --purge $REDIRECT"
-          eval "sudo -E apt-get -qq clean $REDIRECT"
-
-          sudo timedatectl set-timezone "$TZ"
-          sudo hostname OpenWrt
-          sudo hostnamectl set-hostname OpenWrt
-
-          sudo mkdir -p /workdir
-          sudo chown -R $USER:$GROUPS /workdir
-          sudo chown -R $USER:$GROUPS $WORKSPACE
-
-          if [ ! -d "$BUILD_DIR" ]; then
-              sudo mkdir -p "$BUILD_DIR"
-              sudo chown $USER:$GROUPS "$BUILD_DIR"
-          fi
+          mkdir -p /workdir
+          mkdir -p img
 
           ts=$(date +'%Y%m%d%H%M%S')
-          release_tag="OpenWRT_Build_$ts"
-          log "release_tag=$release_tag"
-          echo "release_tag=$release_tag" >> $GITHUB_ENV
-
-          sudo mkdir -p img
-
-          log "依赖安装与清理完成"
-          eval "sudo df -hT $REDIRECT"
+          echo "release_tag=OpenWRT_Build_$ts" >> $GITHUB_ENV
 
       - name: 获取 config 目录列表
         id: get-configs
         run: |
-          echo "正在获取 config 目录列表" > /dev/null 2>&1
-          log() {
-            echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $*"
-          }
-          log "获取 config 目录列表"
-          configs=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | jq -R '@json' | jq -cs .)
-          echo "configs=$configs" >> $GITHUB_OUTPUT
-          log "获取 config 目录列表完成"
-
-      - name: 克隆 OpenWrt 源代码到目录
-        run: |
-          echo "正在运行 克隆 OpenWrt 源代码到目录" > /dev/null 2>&1
-
-          log() { echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $1"; }
-
-          log "开始克隆 OpenWrt 源码"
-          gitpkg="/openwrt_pkg"
-          sudo mkdir -p "$gitpkg"
-          sudo rm -rf "$gitpkg"/*
-          sudo chmod 0755 "$gitpkg"
-
-          sudo git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" "$gitpkg"
-          sudo chmod -R 0755 "$gitpkg"
-
-          shopt -s dotglob
-          sudo mv -f "$gitpkg"/* "$BUILD_DIR"/
-          sudo chown $USER:$GROUPS "$BUILD_DIR"
-          shopt -u dotglob
-
-          sudo rm -rf "$gitpkg"
-          log "源码克隆完成"
-
-      - name: 构建每个 config 配置的固件
-        run: |
-          echo "正在运行 构建每个 config 配置的固件" > /dev/null 2>&1
-          log() {
-            echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $*"
-          }
-
           if [ "$LOG_SILENT" = "true" ]; then
             REDIRECT=">/dev/null 2>&1"
           else
             REDIRECT=""
           fi
 
+          log() { echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $*"; }
+          configs=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | jq -R '@json' | jq -cs .)
+          echo "configs=$configs" >> $GITHUB_OUTPUT
+
+      - name: 克隆 OpenWrt 源代码
+        run: |
+          if [ "$LOG_SILENT" = "true" ]; then REDIRECT=">/dev/null 2>&1"; else REDIRECT=""; fi
+          log() { echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $*"; }
+          log "开始克隆源码"
+          git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" "$BUILD_DIR"
+
+      - name: 构建每个 config 配置的固件
+        run: |
+          if [ "$LOG_SILENT" = "true" ]; then REDIRECT=">/dev/null 2>&1"; else REDIRECT=""; fi
+
+          log() {
+            echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $*"
+          }
+
           configs=${{ steps.get-configs.outputs.configs }}
-          log "发现配置列表: $configs"
           config_array=$(echo "$configs" | jq -r '.[]')
 
           for config_name in $config_array; do
             log "开始构建配置: $config_name"
 
-            if [ -f $WORKSPACE/diy-part1.sh ]; then
-              log "执行自定义脚本 diy-part1.sh"
-              sudo chmod +x $WORKSPACE/diy-part1.sh
-              cd "$BUILD_DIR" && sudo $WORKSPACE/diy-part1.sh
+            if [ -f "$WORKSPACE/diy-part1.sh" ]; then
+              chmod +x "$WORKSPACE/diy-part1.sh"
+              cd "$BUILD_DIR" && "$WORKSPACE/diy-part1.sh"
             fi
 
             if [ -f "$WORKSPACE/config/$config_name/diy-part3.sh" ]; then
-              log "执行自定义脚本 diy-part3.sh"
-              sudo chmod +x $WORKSPACE/config/$config_name/diy-part3.sh
-              cd "$BUILD_DIR" && sudo $WORKSPACE/config/$config_name/diy-part3.sh
+              chmod +x "$WORKSPACE/config/$config_name/diy-part3.sh"
+              cd "$BUILD_DIR" && "$WORKSPACE/config/$config_name/diy-part3.sh"
             fi
 
-            log "更新并安装 feeds"
             cd "$BUILD_DIR"
-            eval "sudo ./scripts/feeds update -a $REDIRECT"
-            eval "sudo ./scripts/feeds install -a $REDIRECT"
+            eval "./scripts/feeds update -a $REDIRECT"
+            eval "./scripts/feeds install -a $REDIRECT"
 
-            sudo cp -f "$WORKSPACE/config/$config_name/$CONFIG_FILE" "$BUILD_DIR/.config"
+            cp -f "$WORKSPACE/config/$config_name/$CONFIG_FILE" ".config"
             custom_pkg_path="$WORKSPACE/config/$config_name/$CUSTOM_PKG_DIR"
             if [ -d "$custom_pkg_path" ]; then
-              sudo cp -rf "$custom_pkg_path" "$BUILD_DIR/package/"
+              cp -rf "$custom_pkg_path" "package/"
             fi
 
-            log "下载依赖包"
-            eval "sudo make defconfig $REDIRECT"
-            eval "sudo make download -j$(nproc) || sudo make download -j1 || sudo make download -j8 $REDIRECT"
-            eval "sudo find dl -size -1024c -exec ls -l {} \; $REDIRECT"
-            eval "sudo find dl -size -1024c -exec rm -f {} \; $REDIRECT"
+            log "生成配置并下载依赖"
+            eval "make defconfig $REDIRECT"
+            eval "make download -j\$(nproc) || make download -j1 || make download -j8 $REDIRECT"
+            find dl -size -1024c -exec rm -f {} \; $REDIRECT
 
             if [ -f "$WORKSPACE/diy-part2.sh" ]; then
-              log "执行自定义脚本 diy-part2.sh"
-              sudo chmod +x $WORKSPACE/diy-part2.sh
-              cd "$BUILD_DIR" && sudo $WORKSPACE/diy-part2.sh
+              chmod +x "$WORKSPACE/diy-part2.sh"
+              cd "$BUILD_DIR" && "$WORKSPACE/diy-part2.sh"
             fi
 
-            log "开始编译，预计耗时 2 小时以上"
-            eval "sudo make V=s -j$(nproc) || sudo make -j1 || sudo make -j1 V=s $REDIRECT"
-            log "固件编译完成"
+            log "开始编译"
+            eval "make V=s -j\$(nproc) || make -j1 || make -j1 V=s $REDIRECT"
+            log "编译完成"
 
             if [ -f "$WORKSPACE/config/$config_name/diy-part4.sh" ]; then
-              log "执行自定义脚本 diy-part4.sh"
-              sudo chmod +x config/$config_name/diy-part4.sh
-              cd "$BUILD_DIR" && sudo $WORKSPACE/config/$config_name/diy-part4.sh
+              chmod +x "$WORKSPACE/config/$config_name/diy-part4.sh"
+              cd "$BUILD_DIR" && "$WORKSPACE/config/$config_name/diy-part4.sh"
             fi
 
-            sudo find "$BUILD_DIR/bin/targets" -type f \( -name '*.img.gz' -o -name '*.bin' \) \
+            find bin/targets -type f \( -name '*.img.gz' -o -name '*.bin' \) \
               | grep -Ev 'kernel\\.bin$|rootfs\\.img\\.gz$' \
               | while read -r img_file; do
                   base_name=$(basename "$img_file")
-                  sudo cp "$img_file" "$WORKSPACE/img/${config_name}_$base_name"
+                  cp "$img_file" "$WORKSPACE/img/${config_name}_$base_name"
                   log "生成文件: ${config_name}_$base_name"
               done
 
-            sudo rm -rf "$BUILD_DIR/.config"
-            sudo rm -rf "$BUILD_DIR/bin/targets/*"
-
+            rm -rf .config bin/targets/*
           done
 
       - name: 上传固件到 GitHub Release
