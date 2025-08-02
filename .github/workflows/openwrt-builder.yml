@@ -90,7 +90,7 @@ jobs:
 
       - name: 克隆 OpenWrt 源代码到根目录 /
         run: |
-          echo "正在运行 克隆 OpenWrt 源代码到根目录 /" > /dev/null 2>&1
+          echo "正在运行 克隆 OpenWrt 源代码到目录" > /dev/null 2>&1
 
           log() { echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $1"; }
 
@@ -101,7 +101,7 @@ jobs:
           sudo rm -rf "$gitpkg"/*
           sudo chmod 0755 "$gitpkg"
           
-          sudo git clone --branch "$REPO_BRANCH" "$REPO_URL" $gitpkg >> $GITHUB_ENV >> $GITHUB_OUTPUT
+          sudo git clone --branch "$REPO_BRANCH" "$REPO_URL" "$gitpkg" >> $GITHUB_ENV >> $GITHUB_OUTPUT
           sudo chmod -R 0755 "$gitpkg"
 
           # log "移动源码文件到目录"
