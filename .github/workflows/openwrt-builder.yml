@@ -161,12 +161,10 @@ jobs:
             fi
             
             log "下载依赖包"
-            eval "make download -j$(nproc) $REDIRECT"
+            eval "make defconfig $REDIRECT"
+            eval "make download -j$(nproc) || make download -j1 || make download -j8 $REDIRECT"
             eval "find dl -size -1024c -exec ls -l {} \; $REDIRECT"
             eval "find dl -size -1024c -exec rm -f {} \; $REDIRECT"
-
-            # log "生成默认配置"
-            # eval "make defconfig $REDIRECT"
 
             if [ -f "$WORKSPACE/diy-part2.sh" ]; then
               log "执行自定义脚本 diy-part2.sh"
