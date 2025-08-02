@@ -13,7 +13,7 @@ jobs:
       TZ:              Asia/Shanghai
       CUSTOM_PKG_DIR:  hello-openwrt
       CONFIG_FILE:     .config
-      BUILD_DIR:       /workdir/openwrt  # OpenWrt源码工作目录
+      BUILD_DIR:       /  # OpenWrt源码工作目录
       WORKSPACE:       ${{ github.workspace }}
       LOG_SILENT:      false  # true=静默模式，false=打印所有日志
 
@@ -33,6 +33,9 @@ jobs:
           else
             REDIRECT=""
           fi
+          
+          # 强制root编译
+          export FORCE_UNSAFE_CONFIGURE=1
 
           log "开始安装依赖与清理"
 
@@ -62,7 +65,7 @@ jobs:
           sudo mkdir -p /workdir
           sudo chown -R $USER:$GROUPS /workdir
           
-          sudo chmod 0755 $WORKSPACE
+          # sudo chmod 0755 $WORKSPACE
           sudo chown -R $USER:$GROUPS $WORKSPACE
 
           if [ ! -d "$BUILD_DIR" ]; then
@@ -176,7 +179,7 @@ jobs:
             fi
 
             log "开始编译，预计耗时 2 小时以上"
-            eval "make V=s -j$(nproc) || make -j1 || sudo make -j1 V=s $REDIRECT"
+            eval "sudo make V=s -j$(nproc) || make -j1 || sudo make -j1 V=s $REDIRECT"
             log "固件编译完成"
 
             if [ -f "$WORKSPACE/config/$config_name/diy-part4.sh" ]; then
