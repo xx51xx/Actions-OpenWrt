@@ -140,8 +140,8 @@ jobs:
 
             if [ -f "$WORKSPACE/config/$config_name/diy-part3.sh" ]; then
               log "执行自定义脚本 diy-part3.sh"
-              sudo chmod +x config/$config_name/diy-part3.sh
-              cd "$BUILD_DIR" && sudo "$WORKSPACE"/config/$config_name/diy-part3.sh
+              sudo chmod +x $WORKSPACE/config/$config_name/diy-part3.sh
+              cd "$BUILD_DIR" && sudo $WORKSPACE/config/$config_name/diy-part3.sh
             fi
 
             # 导入配置文件
@@ -164,8 +164,8 @@ jobs:
 
             if [ -f "$WORKSPACE/diy-part2.sh" ]; then
               log "执行自定义脚本 diy-part2.sh"
-              sudo chmod +x diy-part2.sh
-              cd "$BUILD_DIR" && sudo "$WORKSPACE"/diy-part2.sh
+              sudo chmod +x $WORKSPACE/diy-part2.sh
+              cd "$BUILD_DIR" && sudo $WORKSPACE/diy-part2.sh
             fi
 
             log "开始编译，预计耗时 2 小时以上"
