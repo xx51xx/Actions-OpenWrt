@@ -13,9 +13,9 @@ jobs:
       TZ:              Asia/Shanghai
       CUSTOM_PKG_DIR:  hello-openwrt
       CONFIG_FILE:     .config
-      BUILD_DIR:       /openwrt  # OpenWrt源码工作目录
+      BUILD_DIR:       /  # OpenWrt源码工作目录
       WORKSPACE:       ${{ github.workspace }}
-      LOG_SILENT:      true  # true=静默模式，false=打印所有日志
+      LOG_SILENT:      false  # true=静默模式，false=打印所有日志
 
     steps:
       - name: 检出当前 GitHub 仓库
@@ -150,7 +150,7 @@ jobs:
             eval "sudo ./scripts/feeds install -a $REDIRECT"
 
             log "生成默认配置"
-            eval "sudo make defconfig $REDIRECT"
+            eval "make defconfig $REDIRECT"
 
             sudo cp -f "$WORKSPACE/config/$config_name/$CONFIG_FILE" "$BUILD_DIR/.config"
             custom_pkg_path="$WORKSPACE/config/$config_name/$CUSTOM_PKG_DIR"
@@ -159,7 +159,7 @@ jobs:
             fi
 
             log "下载依赖包"
-            eval "sudo make download -j$(nproc) $REDIRECT"
+            eval "make download -j$(nproc) $REDIRECT"
 
             if [ -f diy-part2.sh ]; then
               log "执行自定义脚本 diy-part2.sh"
@@ -168,7 +168,7 @@ jobs:
             fi
 
             log "开始编译，预计耗时 2 小时以上"
-            eval "sudo make V=s -j$(nproc) $REDIRECT"
+            eval "make V=s -j$(nproc) $REDIRECT"
             log "固件编译完成"
 
             if [ -f config/$config_name/diy-part4.sh ]; then
