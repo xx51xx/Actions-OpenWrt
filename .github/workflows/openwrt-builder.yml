@@ -173,7 +173,7 @@ jobs:
             fi
 
             log "开始编译，预计耗时 2 小时以上"
-            eval "sudo make V=s -j$(nproc) || sudo make -j1 || sudo make -j1 V=s $REDIRECT"
+            eval "FORCE_UNSAFE_CONFIGURE=1 sudo make V=s -j$(nproc) || FORCE_UNSAFE_CONFIGURE=1 sudo make -j1 || FORCE_UNSAFE_CONFIGURE=1 sudo make -j1 V=s $REDIRECT"
             log "固件编译完成"
 
             if [ -f "$WORKSPACE/config/$config_name/diy-part4.sh" ]; then
