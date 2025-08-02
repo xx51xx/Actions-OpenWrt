@@ -23,7 +23,7 @@ jobs:
 
       - name: 安装依赖及清理空间
         run: |
-          echo "开始运行 安装依赖及清理空间" > /dev/null 2>&1
+          echo "正在运行 安装依赖及清理空间" > /dev/null 2>&1
           log() {
             echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $*"
           }
@@ -76,7 +76,7 @@ jobs:
       - name: 获取 config 目录列表
         id: get-configs
         run: |
-          echo "开始运行 获取 config 目录列表" > /dev/null 2>&1
+          echo "正在获取 config 目录列表" > /dev/null 2>&1
           log() {
             echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $*"
           }
@@ -87,7 +87,7 @@ jobs:
 
       - name: 克隆 OpenWrt 源代码到根目录 /
         run: |
-          echo "开始运行 克隆 OpenWrt 源代码到根目录 /" > /dev/null 2>&1
+          echo "正在运行 克隆 OpenWrt 源代码到根目录 /" > /dev/null 2>&1
           
           log() { echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $1"; }
       
@@ -105,7 +105,7 @@ jobs:
           
       - name: 构建每个 config 配置的固件
         run: |
-          echo "开始运行 构建每个 config 配置的固件" > /dev/null 2>&1
+          echo "正在运行 构建每个 config 配置的固件" > /dev/null 2>&1
           log() {
             echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $*"
           }
