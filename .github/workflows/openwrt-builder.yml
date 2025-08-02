@@ -87,14 +87,11 @@ jobs:
               cd ..
             fi
 
-
-            
-
-
             # 更新并安装 Feeds
             cd openwrt
             ./scripts/feeds update -a
             ./scripts/feeds install -a
+            cd ..
 
             # 重置配置
             cd openwrt
@@ -102,18 +99,16 @@ jobs:
             cd ..
 
             # 复制 .config 和自定义包
-            cd openwrt
             cp -f "config/$config_dir/$Config" openwrt/.config
             pkg="config/$config_dir/$PKGS"
             cp -rf "$pkg" openwrt/package/ 
-            cd ..
             
             # 下载源码依赖
             cd openwrt
             make download -j$(nproc)
+            cd ..
             
             # 自定义步骤 2
-            cd ..
             if [ -f diy-part2.sh ]; then
               echo "开始执行 DIY脚本2"
               chmod +x diy-part2.sh
