@@ -85,19 +85,28 @@ jobs:
           configs=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | jq -R '@json' | jq -cs .)
           echo "configs=$configs" >> $GITHUB_OUTPUT
           log "获取 config 目录完成"
-
+          
       - name: 克隆 OpenWrt 源代码到目录
         run: |
+          echo "正在运行 克隆 OpenWrt 源代码到目录" > /dev/null 2>&1
+
           log() { echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $1"; }
 
+          if [ "$LOG_SILENT" = "true" ]; then
+            REDIRECT=">/dev/null 2>&1"
+          else
+            REDIRECT=""
+          fi
+
           log "开始克隆 OpenWrt 源码"
-          gitpkg="/openwrt_pkg"
+          gitpkg="$WORKSPACE/openwrt_pkg"
           mkdir -p "$gitpkg"
           rm -rf "$gitpkg"/*
 
-          git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" "$gitpkg"
+          eval "git clone --depth 1 --branch \"$REPO_BRANCH\" \"$REPO_URL\" \"$gitpkg\" $REDIRECT"
 
           shopt -s dotglob
+          mkdir -p "$BUILD_DIR"
           mv -f "$gitpkg"/* "$BUILD_DIR"/
           shopt -u dotglob
 
