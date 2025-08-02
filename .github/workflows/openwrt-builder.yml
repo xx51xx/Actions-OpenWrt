@@ -13,7 +13,7 @@ jobs:
       TZ:              Asia/Shanghai
       CUSTOM_PKG_DIR:  hello-openwrt
       CONFIG_FILE:     .config
-      BUILD_DIR:       /  # OpenWrt源码工作目录
+      BUILD_DIR:       /openwrt  # OpenWrt源码工作目录
       WORKSPACE:       ${{ github.workspace }}
       LOG_SILENT:      false  # true=静默模式，false=打印所有日志
 
@@ -35,6 +35,10 @@ jobs:
           fi
 
           log "开始安装依赖与清理"
+          
+          if [ ! -d "$BUILD_DIR" ]; then
+              sudo mkdir -p "$BUILD_DIR"
+          fi
 
           eval "sudo df -hT $REDIRECT"
           eval "sudo apt-get update -qq $REDIRECT"
@@ -91,17 +95,17 @@ jobs:
           log() { echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $1"; }
 
           log "开始克隆 OpenWrt 源码"
-          sudo mkdir -p /openwrt
-          sudo rm -rf /openwrt/*
+          sudo mkdir -p /o
+          sudo rm -rf /o/*
           sudo chmod 0755 /openwrt
           sudo git clone --branch "$REPO_BRANCH" "$REPO_URL" /openwrt >> $GITHUB_ENV >> $GITHUB_OUTPUT
           sudo chmod -R 0755 /openwrt
 
           # log "移动源码文件到根目录 /"
           shopt -s dotglob
-          sudo mv -f /openwrt/* /
+          sudo mv -f /o/* $BUILD_DIR
           shopt -u dotglob
-          sudo rm -rf /openwrt
+          sudo rm -rf /o
           log "源码克隆完成"
 
       - name: 构建每个 config 配置的固件
