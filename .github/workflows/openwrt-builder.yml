@@ -23,7 +23,7 @@ jobs:
 
       - name: 安装依赖及清理空间
         run: |
-          echo "开始运行 安装依赖及清理空间"
+          echo "1️⃣ 开始运行 安装依赖及清理空间" > /dev/null 2>&1
           log() {
             echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $*"
           }
@@ -74,7 +74,7 @@ jobs:
       - name: 获取 config 目录列表
         id: get-configs
         run: |
-          echo "开始运行 获取 config 目录列表"
+          echo "2️⃣ 开始运行 获取 config 目录列表" > /dev/null 2>&1
           log() {
             echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $*"
           }
@@ -85,11 +85,12 @@ jobs:
 
       - name: 克隆 OpenWrt 源代码到根目录 /
         run: |
-          echo "开始运行 克隆 OpenWrt 源代码到根目录 /"
+          echo "3️⃣ 开始运行 克隆 OpenWrt 源代码到根目录 /" > /dev/null 2>&1
           
           log() { echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $1"; }
       
           log "开始克隆 OpenWrt 源码"
+          mkdir -p /openwrt
           git clone --branch "$REPO_BRANCH" "$REPO_URL" /openwrt >> $GITHUB_ENV
       
           log "移动源码文件到根目录 /"
@@ -97,12 +98,12 @@ jobs:
           sudo mv /openwrt/* /
           shopt -u dotglob
           sudo chmod -R 0755 /
-      
+          rm -rf /openwrt
           log "源码克隆完成" 
           
       - name: 构建每个 config 配置的固件
         run: |
-          echo "开始运行 构建每个 config 配置的固件"
+          echo "4️⃣ 开始运行 构建每个 config 配置的固件" > /dev/null 2>&1
           log() {
             echo "[$(date '+%Y-%m-%d-%H:%M:%S')] $*"
           }
