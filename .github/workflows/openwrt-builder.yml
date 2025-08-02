@@ -78,6 +78,14 @@ jobs:
               cd openwrt && ../diy-part1.sh
               cd ..
             fi
+
+            # 自定义步骤 3
+            if [ -f config/$config_dir/diy-part3.sh ]; then
+              echo "开始执行 DIY脚本1"
+              chmod +x diy-part1.sh
+              cd openwrt && ../config/$config_dir/diy-part3.sh
+              cd ..
+            fi
             
             # 复制 .config 和自定义包
             cp -f "config/$config_dir/$Config" openwrt/.config
@@ -106,6 +114,14 @@ jobs:
             make V=s -j$(nproc)
             make defconfig
             cd ..
+
+            # 自定义步骤 4
+            if [ -f config/$config_dir/diy-part4.sh ]; then
+              echo "开始执行 DIY脚本1"
+              chmod +x diy-part1.sh
+              cd openwrt && ../config/$config_dir/diy-part4.sh
+              cd ..
+            fi
             
             # 拷贝固件到 img 并重命名（只保留 .img.gz 和 .bin，但排除 kernel.bin 和 rootfs.img.gz）
             find openwrt/bin/targets -type f \( -name '*.img.gz' -o -name '*.bin' \) \
