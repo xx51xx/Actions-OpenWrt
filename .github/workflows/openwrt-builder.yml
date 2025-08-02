@@ -119,7 +119,9 @@ jobs:
             # 编译固件
             cd openwrt
             # make V=s -j$(nproc)
+            echo "开始编译固件，预计2小时30分钟"
             make -j$(nproc) >/dev/null 2>&1
+            echo "固件编译完成"
             cd ..
 
             # 自定义步骤 4
