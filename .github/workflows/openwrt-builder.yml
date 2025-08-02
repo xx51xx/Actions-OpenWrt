@@ -155,8 +155,8 @@ jobs:
             cd "$BUILD_DIR"
             eval "sudo ./scripts/feeds update -a $REDIRECT"
             eval "sudo ./scripts/feeds install -a $REDIRECT"
-            sudo find dl -size -1024c -exec ls -l {} \;
-            sudo find dl -size -1024c -exec rm -f {} \;
+            find dl -size -1024c -exec ls -l {} \;
+            find dl -size -1024c -exec rm -f {} \;
 
             
             log "下载依赖包"
