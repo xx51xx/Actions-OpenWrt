@@ -118,7 +118,8 @@ jobs:
             
             # 编译固件
             cd openwrt
-            make V=s -j$(nproc)
+            # make V=s -j$(nproc)
+            make -j$(nproc) >/dev/null 2>&1
             cd ..
 
             # 自定义步骤 4
