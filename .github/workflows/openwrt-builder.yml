@@ -108,6 +108,8 @@ jobs:
           # log "移动源码文件到目录"
           shopt -s dotglob
           sudo mv -f "$gitpkg"/* "$BUILD_DIR"/
+          sudo chmod -R 0755 "$BUILD_DIR"
+          sudo chown $USER:$GROUPS "$BUILD_DIR"
           shopt -u dotglob
           
           sudo rm -rf "$gitpkg"
