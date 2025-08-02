@@ -15,7 +15,7 @@ jobs:
       CONFIG_FILE:     .config
       BUILD_DIR:       /openwrt  # OpenWrt源码工作目录
       WORKSPACE:       ${{ github.workspace }}
-      LOG_SILENT:      false  # true=静默模式，false=打印所有日志
+      LOG_SILENT:      true  # true=静默模式，false=打印所有日志
 
     steps:
       - name: 检出当前 GitHub 仓库
