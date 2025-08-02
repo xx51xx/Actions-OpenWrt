@@ -75,7 +75,7 @@ jobs:
           log "release_tag=$release_tag"
           echo "release_tag=$release_tag" >> $GITHUB_ENV
 
-          mkdir -p img
+          sudo mkdir -p img
 
           log "依赖安装与清理完成"
           eval "sudo df -hT $REDIRECT"
@@ -109,7 +109,6 @@ jobs:
 
           shopt -s dotglob
           sudo mv -f "$gitpkg"/* "$BUILD_DIR"/
-          # sudo chmod -R 0755 "$BUILD_DIR"
           sudo chown $USER:$GROUPS "$BUILD_DIR"
           shopt -u dotglob
 
@@ -139,19 +138,19 @@ jobs:
             if [ -f $WORKSPACE/diy-part1.sh ]; then
               log "执行自定义脚本 diy-part1.sh"
               sudo chmod +x $WORKSPACE/diy-part1.sh
-              cd "$BUILD_DIR" && $WORKSPACE/diy-part1.sh
+              cd "$BUILD_DIR" && sudo $WORKSPACE/diy-part1.sh
             fi
 
             if [ -f "$WORKSPACE/config/$config_name/diy-part3.sh" ]; then
               log "执行自定义脚本 diy-part3.sh"
               sudo chmod +x $WORKSPACE/config/$config_name/diy-part3.sh
-              cd "$BUILD_DIR" && $WORKSPACE/config/$config_name/diy-part3.sh
+              cd "$BUILD_DIR" && sudo $WORKSPACE/config/$config_name/diy-part3.sh
             fi
 
             log "更新并安装 feeds"
             cd "$BUILD_DIR"
-            eval "./scripts/feeds update -a $REDIRECT"
-            eval "./scripts/feeds install -a $REDIRECT"
+            eval "sudo ./scripts/feeds update -a $REDIRECT"
+            eval "sudo ./scripts/feeds install -a $REDIRECT"
 
             sudo cp -f "$WORKSPACE/config/$config_name/$CONFIG_FILE" "$BUILD_DIR/.config"
             custom_pkg_path="$WORKSPACE/config/$config_name/$CUSTOM_PKG_DIR"
@@ -161,27 +160,27 @@ jobs:
 
             log "下载依赖包"
             eval "sudo make defconfig $REDIRECT"
-            eval "sudo make download -j$(nproc) || make download -j1 || make download -j8 $REDIRECT"
-            eval "find dl -size -1024c -exec ls -l {} \; $REDIRECT"
-            eval "find dl -size -1024c -exec rm -f {} \; $REDIRECT"
+            eval "sudo make download -j$(nproc) || sudo make download -j1 || sudo make download -j8 $REDIRECT"
+            eval "sudo find dl -size -1024c -exec ls -l {} \; $REDIRECT"
+            eval "sudo find dl -size -1024c -exec rm -f {} \; $REDIRECT"
 
             if [ -f "$WORKSPACE/diy-part2.sh" ]; then
               log "执行自定义脚本 diy-part2.sh"
               sudo chmod +x $WORKSPACE/diy-part2.sh
-              cd "$BUILD_DIR" && $WORKSPACE/diy-part2.sh
+              cd "$BUILD_DIR" && sudo $WORKSPACE/diy-part2.sh
             fi
 
             log "开始编译，预计耗时 2 小时以上"
-            eval "sudo make V=s -j$(nproc) || make -j1 || sudo make -j1 V=s $REDIRECT"
+            eval "sudo make V=s -j$(nproc) || sudo make -j1 || sudo make -j1 V=s $REDIRECT"
             log "固件编译完成"
 
             if [ -f "$WORKSPACE/config/$config_name/diy-part4.sh" ]; then
               log "执行自定义脚本 diy-part4.sh"
               sudo chmod +x config/$config_name/diy-part4.sh
-              cd "$BUILD_DIR" && $WORKSPACE/config/$config_name/diy-part4.sh
+              cd "$BUILD_DIR" && sudo $WORKSPACE/config/$config_name/diy-part4.sh
             fi
 
-            find "$BUILD_DIR/bin/targets" -type f \( -name '*.img.gz' -o -name '*.bin' \) \
+            sudo find "$BUILD_DIR/bin/targets" -type f \( -name '*.img.gz' -o -name '*.bin' \) \
               | grep -Ev 'kernel\\.bin$|rootfs\\.img\\.gz$' \
               | while read -r img_file; do
                   base_name=$(basename "$img_file")
