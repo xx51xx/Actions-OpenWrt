@@ -25,7 +25,15 @@ jobs:
           sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
           sudo docker image prune --all --force
           sudo -E apt-get -qq update
-          sudo -E apt-get -qq install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp ninja-build p7zip p7zip-full patch pkgconf python2.7 python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
+          
+          sudo -E apt-get install -qq -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
+          bzip2 ccache clang cmake cpio curl device-tree-compiler flex gawk gcc-multilib g++-multilib gettext \
+          genisoimage git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev \
+          libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev \
+          libreadline-dev libssl-dev libtool llvm lrzsz msmtp ninja-build p7zip p7zip-full patch pkgconf \
+          python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion \
+          swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev   
+          
           sudo -E apt-get -qq autoremove --purge
           sudo -E apt-get -qq clean
           sudo timedatectl set-timezone "$TZ"
@@ -37,12 +45,18 @@ jobs:
           release_tag="OpenWRT_Build_$ts"
           echo "release_tag=$release_tag" >> $GITHUB_ENV
           mkdir -p img
+          
           sudo df -hT
+          
       - name: 获取 config 目录列表
         id: get-configs
         run: |
+        
           configs=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | jq -R '@json' | jq -cs .)
           echo "configs=$configs" >> $GITHUB_OUTPUT
+
+          git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" openwrt
+          
       - name: 顺序构建每个 config
         id: build_loop
         run: |
@@ -51,7 +65,7 @@ jobs:
           # 将 configs 解析成数组
           config_array=$(echo "$configs" | jq -r '.[]')
           
-          git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" openwrt
+          
           
           for config_dir in $config_array; do
           
