@@ -60,10 +60,10 @@ jobs:
           sudo hostnamectl set-hostname OpenWrt
 
           sudo mkdir -p /workdir
-          sudo chown $USER:$GROUPS /workdir
+          sudo chown -R $USER:$GROUPS /workdir
           
           sudo chmod 0755 $WORKSPACE
-          sudo chown $USER:$GROUPS $WORKSPACE
+          sudo chown -R $USER:$GROUPS $WORKSPACE
 
           if [ ! -d "$BUILD_DIR" ]; then
               sudo mkdir -p "$BUILD_DIR"
