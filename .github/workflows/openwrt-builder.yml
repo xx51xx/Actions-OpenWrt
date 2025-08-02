@@ -86,15 +86,19 @@ jobs:
               cd openwrt && ../config/$config_dir/diy-part3.sh
               cd ..
             fi
+
+            # 重置配置
+            cd openwrt
+            make defconfig
+            cd ..
             
             # 复制 .config 和自定义包
-            make defconfig
             cp -f "config/$config_dir/$Config" openwrt/.config
             pkg="config/$config_dir/$PKGS"
             cp -rf "$pkg" openwrt/package/
 
             # 更新并安装 Feeds
-            cd openwrt
+            
             ./scripts/feeds update -a
             ./scripts/feeds install -a
             
