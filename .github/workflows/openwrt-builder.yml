@@ -82,7 +82,7 @@ jobs:
             # 自定义步骤 3
             if [ -f config/$config_dir/diy-part3.sh ]; then
               echo "开始执行 DIY脚本1"
-              chmod +x diy-part1.sh
+              chmod +x config/$config_dir/diy-part3.sh
               cd openwrt && ../config/$config_dir/diy-part3.sh
               cd ..
             fi
@@ -118,7 +118,7 @@ jobs:
             # 自定义步骤 4
             if [ -f config/$config_dir/diy-part4.sh ]; then
               echo "开始执行 DIY脚本1"
-              chmod +x diy-part1.sh
+              chmod +x config/$config_dir/diy-part4.sh
               cd openwrt && ../config/$config_dir/diy-part4.sh
               cd ..
             fi
