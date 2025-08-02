@@ -155,6 +155,9 @@ jobs:
             cd "$BUILD_DIR"
             eval "sudo ./scripts/feeds update -a $REDIRECT"
             eval "sudo ./scripts/feeds install -a $REDIRECT"
+            sudo find dl -size -1024c -exec ls -l {} \;
+            sudo find dl -size -1024c -exec rm -f {} \;
+
             
             log "下载依赖包"
             eval "sudo make download -j$(nproc) $REDIRECT"
@@ -169,7 +172,7 @@ jobs:
             fi
 
             log "开始编译，预计耗时 2 小时以上"
-            eval "sudo make V=s -j$(nproc) $REDIRECT"
+            eval "sudo make V=s -j$(nproc) || make -j1 || make -j1 V=s $REDIRECT"
             log "固件编译完成"
 
             if [ -f "$WORKSPACE/config/$config_name/diy-part4.sh" ]; then
