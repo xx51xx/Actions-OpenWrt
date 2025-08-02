@@ -97,11 +97,10 @@ jobs:
           sudo git clone --branch "$REPO_BRANCH" "$REPO_URL" /openwrt >> $GITHUB_ENV >> $GITHUB_OUTPUT
           sudo chmod -R 0755 /openwrt
 
-          log "移动源码文件到根目录 /" >> $GITHUB_OUTPUT
+          # log "移动源码文件到根目录 /"
           shopt -s dotglob
           sudo mv /openwrt/* /
           shopt -u dotglob
-          sudo chmod -R 0777 /
           sudo rm -rf /openwrt
           log "源码克隆完成"
 
