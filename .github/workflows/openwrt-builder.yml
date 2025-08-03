@@ -15,7 +15,7 @@ jobs:
       REPO_BRANCH: master                                                 # 克隆的分支
       CUSTOM_PKG_DIR: hello-openwrt                                       # 每个 config 子目录下的自定义包目录名
       CONFIG_FILE: .config                                                # 每个 config 子目录下的配置文件名
-      LOG_SILENT: true                                                    # 是否静默日志输出：true 输出日志，false 静默
+      LOG_SILENT: false                                                    # 是否静默日志输出：true 输出日志，false 静默
       
       TIMEZONE: Asia/Shanghai                                             # 时区设置，用于 date/timedatectl
       BUILD_DIR: ${{ github.workspace }}/openwrt                          # 源码与构建输出目录
@@ -260,7 +260,7 @@ jobs:
             fi
 
             # 复制 .config 文件
-            log "复制 .config 文件"
+            log "导入 配置文件 文件"
             CONFIG_PATH="$WORKSPACE_DIR/config/$cfg/$CONFIG_FILE"
             if [ -f "$CONFIG_PATH" ]; then
               sudo cp -f "$CONFIG_PATH" .config
@@ -279,7 +279,6 @@ jobs:
             fi
 
             # 复制 hello-openwrt 包
-            复制 hello-openwrt 包
             CUSTOM_PKG_PATH="$WORKSPACE_DIR/config/$cfg/$CUSTOM_PKG_DIR"
             if [ -d "$CUSTOM_PKG_PATH" ]; then
               log "复制自定义包目录：$CUSTOM_PKG_DIR"
