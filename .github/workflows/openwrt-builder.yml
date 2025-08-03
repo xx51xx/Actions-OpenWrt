@@ -28,8 +28,8 @@ jobs:
       # GitHub 工作区目录
       WORKSPACE_DIR: ${{ github.workspace }}
 
-      # 是否静默日志输出（逻辑取反：true 时不静默，false 时静默）
-      LOG_SILENT: false
+      # 是否静默日志输出（true 时输出日志，false 时静默）
+      LOG_SILENT: true
 
     steps:
       - name: 检出源码仓库
@@ -55,7 +55,7 @@ jobs:
             /opt/ghc /opt/hostedtoolcache/CodeQL$REDIRECT"
           eval "sudo docker image prune --all --force$REDIRECT"
           eval "sudo -E apt-get -qq update$REDIRECT"
-          eval "sudo -E apt-get -qq -y ack antlr3 asciidoc autoconf automake autopoint \
+          eval "sudo -E apt-get -qq ack antlr3 asciidoc autoconf automake autopoint \
             binutils bison build-essential bzip2 ccache clang cmake cpio curl \
             device-tree-compiler flex gawk gcc-multilib g++-multilib gettext \
             genisoimage git gperf haveged help2man intltool libc6-dev-i386 \
