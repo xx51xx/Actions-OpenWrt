@@ -220,13 +220,6 @@ jobs:
             eval "make -j$(nproc) V=s || make -j1 V=s || make -j1 $REDIRECT"
             log "编译 $cfg 完成"
       
-            # 可选后期 DIY 脚本
-            if [ -f "$WORKSPACE_DIR/config/$cfg/diy-part4.sh" ]; then
-              chmod +x "$WORKSPACE_DIR/config/$cfg/diy-part4.sh"
-              cd "$BUILD_DIR"
-              "$WORKSPACE_DIR/config/$cfg/diy-part4.sh"
-            fi
-      
             # 收集并输出固件文件
             find "$BUILD_DIR/bin/targets" -type f \
               \( -name '*.img.gz' -o -name '*.bin' \) \
@@ -236,6 +229,13 @@ jobs:
                   cp "$img" "$OUTPUT_DIR/${cfg}_$base"
                   log "产出：${cfg}_$base"
                 done
+                
+            # 可选后期 DIY 脚本
+            if [ -f "$WORKSPACE_DIR/config/$cfg/diy-part4.sh" ]; then
+              chmod +x "$WORKSPACE_DIR/config/$cfg/diy-part4.sh"
+              cd "$BUILD_DIR"
+              "$WORKSPACE_DIR/config/$cfg/diy-part4.sh"
+            fi
       
             # 清理本次构建残留
             rm -f "$BUILD_DIR/.config"
