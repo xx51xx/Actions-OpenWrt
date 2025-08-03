@@ -160,6 +160,8 @@ jobs:
           sudo ln -s /workdir/staging_dir "$BUILD_DIR/staging_dir"
           sudo ln -s /workdir/dl-cache "$BUILD_DIR/dl"
 
+          log "挂载 LVM 磁盘完成"
+
           # 生成时间戳
           ts=$(date +'%Y%m%d%H%M%S')
           # 设置 release_tag 环境变量
@@ -226,7 +228,7 @@ jobs:
           cd $WORKSPACE_DIR
           
           for cfg in $(echo "$CONFIG_LIST" | jq -r '.[]'); do
-            log "开始构建配置：$cfg"
+            log "开始构建配置:$cfg"
 
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
@@ -249,6 +251,7 @@ jobs:
             fi
 
             # 更新OpenWrt软件源
+            log "更新OpenWrt软件源"
             eval "cd $BUILD_DIR && ./scripts/feeds update -a $REDIRECT"
             eval "cd $BUILD_DIR && ./scripts/feeds install -a $REDIRECT"
 
@@ -257,6 +260,7 @@ jobs:
             fi
 
             # 复制 .config 文件
+            log "复制 .config 文件"
             CONFIG_PATH="$WORKSPACE_DIR/config/$cfg/$CONFIG_FILE"
             if [ -f "$CONFIG_PATH" ]; then
               sudo cp -f "$CONFIG_PATH" .config
@@ -275,6 +279,7 @@ jobs:
             fi
 
             # 复制 hello-openwrt 包
+            复制 hello-openwrt 包
             CUSTOM_PKG_PATH="$WORKSPACE_DIR/config/$cfg/$CUSTOM_PKG_DIR"
             if [ -d "$CUSTOM_PKG_PATH" ]; then
               log "复制自定义包目录：$CUSTOM_PKG_DIR"
@@ -293,7 +298,8 @@ jobs:
               cd "$BUILD_DIR"
             fi
             
-            # defconfig 与依赖下载
+            # defconfig 与 依赖下载
+            log "Defconfig 与依赖下载"
             eval "make defconfig $REDIRECT"
             eval "make download -j$(nproc) $REDIRECT|| make download -j1 $REDIRECT|| make download -j8 $REDIRECT"
             eval "find dl -size -1024c -exec ls -l {} \; $REDIRECT"
@@ -317,11 +323,12 @@ jobs:
 
             log "开始编译 $cfg"
             eval "make -j$(nproc) V=s $REDIRECT || make -j1 V=s $REDIRECT || make -j1 $REDIRECT"
-
+            log "$cfg 编译完成"
+            
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
             fi
-
+          
             # 收集固件文件并输出
             find bin/targets -type f \( -name '*.img.gz' -o -name '*.bin' \) \
               | grep -Ev 'kernel\.bin$|rootfs\.img\.gz$' \
@@ -347,6 +354,7 @@ jobs:
             rm -rf bin/targets/*
 
             # 返回工作目录
+            log "$cfg 构建结束"
             cd $WORKSPACE_DIR
             
           done
