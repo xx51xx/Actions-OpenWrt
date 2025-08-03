@@ -129,18 +129,17 @@ jobs:
           ts=$(date +'%Y%m%d%H%M%S')
           echo "release_tag=OpenWRT_Build_$ts" >> "$GITHUB_ENV"
 
-      - name: 收集所有 config 子目录
-        id: get-configs
-        run: |
-          CONFIG_LIST=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
-          echo "configs=$CONFIG_LIST" >> "$GITHUB_OUTPUT"
-
       - name: 克隆 OpenWrt 源码
         run: |
           log() { echo "[$(date '+%F %T')] $*"; }
           if [ "$LOG_SILENT" = true ]; then REDIRECT="> /dev/null 2>&1"; else REDIRECT=""; fi
 
+          # 创建临时源码目录（如果不存在）
           TEMP_DIR="$WORKSPACE_DIR/tmp_source"
+          if [ ! -d "$TEMP_DIR" ]; then
+            mkdir -p "$TEMP_DIR"
+            sudo chown -R $(id -u):$(id -g) "$TEMP_DIR"
+          fi
           rm -rf "$TEMP_DIR"/*
 
           eval "git clone --depth 1 --branch $REPO_BRANCH $REPO_URL $TEMP_DIR $REDIRECT"
@@ -154,8 +153,10 @@ jobs:
           log() { echo "[$(date '+%F %T')] $*"; }
           if [ "$LOG_SILENT" = true ]; then REDIRECT="> /dev/null 2>&1"; else REDIRECT=""; fi
 
-          CONFIG_ARRAY="${{ steps.get-configs.outputs.configs }}"
-          for cfg in $CONFIG_ARRAY; do
+          # 收集 config 子目录名为配置列表（JSON数组）
+          CONFIG_LIST=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | jq -R . | jq -s .)
+          
+          for cfg in $(echo "$CONFIG_LIST" | jq -r '.[]'); do
             log "开始构建配置：$cfg"
 
             # 执行自定义步骤1
