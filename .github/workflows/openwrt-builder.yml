@@ -99,26 +99,26 @@ jobs:
           # 创建 OpenWrt 构建缓存目录（如果不存在）
           for dir in /workdir/tmp /workdir/staging_dir; do
             if [ ! -d "$dir" ]; then
-              mkdir -p "$dir"
+              sudo mkdir -p "$dir"
               sudo chown -R $(id -u):$(id -g) "$dir"
             fi
           done
           
           # 创建 dl 缓存目录（如果不存在）
           if [ ! -d /workdir/dl-cache ]; then
-            mkdir -p /workdir/dl-cache
+            sudo mkdir -p /workdir/dl-cache
             sudo chown -R $(id -u):$(id -g) /workdir/dl-cache
           fi
           
           # 创建构建输出目录（如果不存在）
           if [ ! -d "$OUTPUT_DIR" ]; then
-            mkdir -p "$OUTPUT_DIR"
+            sudo mkdir -p "$OUTPUT_DIR"
             sudo chown -R $(id -u):$(id -g) "$OUTPUT_DIR"
           fi
           
           # 创建 OpenWrt 源码目录（如果不存在）
           if [ ! -d "$BUILD_DIR" ]; then
-            mkdir -p "$BUILD_DIR"
+            sudo mkdir -p "$BUILD_DIR"
             sudo chown -R $(id -u):$(id -g) "$BUILD_DIR"
           fi
           
