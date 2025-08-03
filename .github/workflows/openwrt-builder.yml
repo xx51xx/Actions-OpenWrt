@@ -16,6 +16,13 @@ jobs:
       CUSTOM_PKG_DIR: hello-openwrt                                       # 每个 config 子目录下的自定义包目录名
       CONFIG_FILE: .config                                                # 每个 config 子目录下的配置文件名
       LOG_SILENT: true                                                    # 是否静默日志输出：true 输出日志，false 静默
+      
+      TIMEZONE: Asia/Shanghai                                             # 时区设置，用于 date/timedatectl
+      BUILD_DIR: ${{ github.workspace }}/openwrt                          # 源码与构建输出目录
+      OUTPUT_DIR: ${{ github.workspace }}/img                             # 最终固件存放目录
+      WORKSPACE_DIR: ${{ github.workspace }}                              # GitHub 工作区根目录
+      FORCE_UNSAFE_CONFIGURE: 1                                           # 环境变量以允许 root     
+
 
     steps:
       # 第一步：检出当前仓库（包含本工作流文件）
@@ -33,15 +40,9 @@ jobs:
             echo "[$current_time] $*"
           }
 
-          # 导出环境变量以允许 OpenWrt configure
+          # 环境变量以允许 root
           echo "FORCE_UNSAFE_CONFIGURE=1" >> "$GITHUB_ENV"   
           export FORCE_UNSAFE_CONFIGURE=1
-
-          # 全局变量2
-          env.TIMEZONE: Asia/Shanghai                             # 时区设置，用于 date/timedatectl
-          env.BUILD_DIR: ${{ github.workspace }}/openwrt          # 源码与构建输出目录
-          env.OUTPUT_DIR: ${{ github.workspace }}/img             # 最终固件存放目录
-          env.WORKSPACE_DIR: ${{ github.workspace }}              # GitHub 工作区根目录
 
           # 根据 LOG_SILENT 控制是否重定向输出
           if [ "$LOG_SILENT" = true ]; then        
