@@ -40,17 +40,18 @@ jobs:
           eval "sudo docker image prune -af $REDIRECT"
 
           log "安装编译依赖包"
-          sudo -E apt-get -qq update
-          DEBIAN_FRONTEND=noninteractive sudo -E apt-get install -y ack antlr3 asciidoc autoconf automake autopoint \
-            binutils bison build-essential bzip2 ccache clang cmake cpio curl device-tree-compiler flex gawk \
-            gcc-multilib g++-multilib gettext genisoimage git gperf haveged help2man intltool libc6-dev-i386 \
-            libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev \
-            libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool llvm lrzsz msmtp ninja-build \
-            p7zip p7zip-full patch pkgconf python3 python3-pyelftools python3-setuptools qemu-utils rsync scons \
-            squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev $REDIRECT
-
-          sudo apt-get -qq autoremove --purge -y $REDIRECT
-          sudo apt-get -qq clean $REDIRECT
+          eval "sudo -E apt-get -qq update $REDIRECT"
+          eval "sudo -E apt-get install -qq -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
+          bzip2 ccache clang cmake cpio curl device-tree-compiler flex gawk gcc-multilib g++-multilib gettext \
+          genisoimage git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev \
+          libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev \
+          libreadline-dev libssl-dev libtool llvm lrzsz msmtp ninja-build p7zip p7zip-full patch pkgconf \
+          python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion \
+          swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev $REDIRECT”
+         
+          eval "sudo -E apt-get -qq autoremove --purge $REDIRECT"
+          eval "sudo apt-get -qq clean $REDIRECT $REDIRECT"
+          
 
           if [ -n "$TIMEZONE" ]; then
             sudo timedatectl set-timezone "$TIMEZONE"
