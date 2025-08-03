@@ -92,7 +92,7 @@ jobs:
       
           # 删除 /workdir 原目录并链接至 /builder/workdir
           sudo rm -rf /workdir
-          ln -s /builder/workdir /workdir
+          sudo ln -s /builder/workdir /workdir
       
           # 保留 img 目录在默认位置
           sudo mkdir -p /img
@@ -110,7 +110,7 @@ jobs:
       
           # 删除默认 dl 文件夹并软链接
           rm -rf "$OPENWRT_BUILD_DIR/dl"
-          ln -s /workdir/dl-cache "$OPENWRT_BUILD_DIR/dl"
+          sudo ln -s /workdir/dl-cache "$OPENWRT_BUILD_DIR/dl"
       
           log "dl 缓存映射完成：$OPENWRT_BUILD_DIR/dl -> /workdir/dl-cache"
           eval "ls -al $OPENWRT_BUILD_DIR | grep dl $REDIRECT"
