@@ -77,7 +77,7 @@ jobs:
             avail_pct=$(( mem_avail_m * 100 / mem_tot_m ))
           
             # 5. 输出单行结果
-            echo "硬盘/:${root_used}/${root_tot}(${root_pct}%用,$((100-root_pct))%空)|/builder:${build_used}/${build_tot}(${build_pct}%用,$((100-build_pct))%空)|内存:${mem_used_h}/${mem_tot_h}(${used_pct}%用,${avail_pct}%可用)|缓存:${cache_h}"
+            echo "硬盘[[/]:${root_used}/${root_tot}(${root_pct}%用,$((100-root_pct))%空)]|[[/builder]:${build_used}/${build_tot}(${build_pct}%用,$((100-build_pct))%空)]|内存:[${mem_used_h}/${mem_tot_h}(${used_pct}%用,${avail_pct}%可用)]|缓存:[${cache_h}]"
           }
 
           # 环境变量以允许 root
@@ -299,7 +299,7 @@ jobs:
             avail_pct=$(( mem_avail_m * 100 / mem_tot_m ))
           
             # 5. 输出单行结果
-            echo "硬盘/:${root_used}/${root_tot}(${root_pct}%用,$((100-root_pct))%空)|/builder:${build_used}/${build_tot}(${build_pct}%用,$((100-build_pct))%空)|内存:${mem_used_h}/${mem_tot_h}(${used_pct}%用,${avail_pct}%可用)|缓存:${cache_h}"
+            echo "硬盘[[/]:${root_used}/${root_tot}(${root_pct}%用,$((100-root_pct))%空)]|[[/builder]:${build_used}/${build_tot}(${build_pct}%用,$((100-build_pct))%空)]|内存:[${mem_used_h}/${mem_tot_h}(${used_pct}%用,${avail_pct}%可用)]|缓存:[${cache_h}]"
           }
 
           # 扫描 config 子目录生成 JSON 列表
