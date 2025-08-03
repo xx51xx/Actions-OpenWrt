@@ -66,12 +66,16 @@ jobs:
             msmtp ninja-build p7zip p7zip-full patch pkgconf python3 \
             python3-pyelftools python3-setuptools qemu-utils rsync scons \
             squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip \
-            vim wget xmlto xxd zlib1g-dev“
+            vim wget xmlto xxd zlib1g-dev"
 
           for pkg in $PACKAGES; do
-            eval "sudo -E apt-get -qq -y install \$pkg $REDIRECT" || log "跳过不存在的软件包: $pkg"
+            if [ "$LOG_SILENT" = "true" ]; then
+              sudo -E apt-get -qq -y install "$pkg" >/dev/null 2>&1 || log "跳过不存在的软件包: $pkg"
+            else
+              sudo -E apt-get -qq -y install "$pkg" || log "跳过不存在的软件包: $pkg"
+            fi
           done
-          
+
           eval "sudo -E apt-get -qq autoremove --purge$REDIRECT"
           eval "sudo -E apt-get -qq clean$REDIRECT"
 
