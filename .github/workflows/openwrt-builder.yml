@@ -22,44 +22,45 @@ jobs:
       - name: 检出源码仓库
         uses: actions/checkout@v4
 
-      - name: 安装依赖及清理空间
+      - name: 安装依赖及挂载构建磁盘
         run: |
           log() { echo "[$(date '+%F %T')] $*"; }
+
           echo "FORCE_UNSAFE_CONFIGURE=1" >> "$GITHUB_ENV"
           export FORCE_UNSAFE_CONFIGURE=1
 
-          [ "$LOG_SILENT" = true ] && REDIRECT="" || REDIRECT="> /dev/null 2>&1"
+          if [ "$LOG_SILENT" = true ]; then
+            REDIRECT="> /dev/null 2>&1"
+          else
+            REDIRECT=""
+          fi
 
-          log "开始安装依赖与清理空间"
-          eval "df -hT $REDIRECT"
-
+          log "清理不必要的软件包节省空间"
           eval "sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL $REDIRECT"
           eval "sudo docker image prune -af $REDIRECT"
-          eval "sudo -E apt-get -qq update $REDIRECT"
 
-          PACKAGES="ack antlr3 asciidoc autoconf automake autopoint \
-            binutils bison build-essential bzip2 ccache clang cmake cpio curl \
-            device-tree-compiler flex gawk gcc-multilib g++-multilib gettext \
-            genisoimage git gperf haveged help2man intltool libc6-dev-i386 \
-            libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev \
-            libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev \
-            libpython3-dev libreadline-dev libssl-dev libtool llvm lrzsz \
-            msmtp ninja-build p7zip p7zip-full patch pkgconf python3 \
-            python3-pyelftools python3-setuptools qemu-utils rsync scons \
-            squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip \
-            vim wget xmlto xxd zlib1g-dev"
+          log "安装编译依赖包"
+          sudo -E apt-get -qq update
+          DEBIAN_FRONTEND=noninteractive sudo -E apt-get install -y ack antlr3 asciidoc autoconf automake autopoint \
+            binutils bison build-essential bzip2 ccache clang cmake cpio curl device-tree-compiler flex gawk \
+            gcc-multilib g++-multilib gettext genisoimage git gperf haveged help2man intltool libc6-dev-i386 \
+            libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev \
+            libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool llvm lrzsz msmtp ninja-build \
+            p7zip p7zip-full patch pkgconf python3 python3-pyelftools python3-setuptools qemu-utils rsync scons \
+            squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev $REDIRECT
 
-          for pkg in $PACKAGES; do
-            eval "sudo -E apt-get -qq -y install $pkg $REDIRECT" || log "跳过不存在的软件包: $pkg"
-          done
+          sudo apt-get -qq autoremove --purge -y $REDIRECT
+          sudo apt-get -qq clean $REDIRECT
 
-          eval "sudo -E apt-get -qq autoremove --purge $REDIRECT"
-          eval "sudo -E apt-get -qq clean $REDIRECT"
+          if [ -n "$TIMEZONE" ]; then
+            sudo timedatectl set-timezone "$TIMEZONE"
+          else
+            log "TIMEZONE 未设置，跳过设置时区"
+          fi
 
-          [ -n "$TIMEZONE" ] && sudo timedatectl set-timezone "$TIMEZONE" || log "TIMEZONE 未设置，跳过设置时区"
           sudo hostname OpenWrt && sudo hostnamectl set-hostname OpenWrt
 
-          log "开始挂载额外构建磁盘并映射 /workdir"
+          log "挂载 LVM 磁盘用于构建"
           mnt_size=$(( $(df -h /mnt | tail -1 | awk '{print $4}' | sed 's/[^0-9]//g') - 1 ))
           root_size=$(( $(df -h / | tail -1 | awk '{print $4}' | sed 's/[^0-9]//g') - 4 ))
 
@@ -77,42 +78,31 @@ jobs:
 
           sudo mkdir -p /builder && sudo mount /dev/github/runner /builder
           sudo mkdir -p /builder/workdir && sudo chown -R $(id -u):$(id -g) /builder /builder/workdir
-          sudo chown -R $(id -u):$(id -g) "$WORKSPACE_DIR"
 
           sudo rm -rf /workdir && sudo ln -s /builder/workdir /workdir
 
-          mkdir -p /workdir/tmp /workdir/staging_dir
-          
-          sudo chown -R $(id -u):$(id -g) /workdir/tmp /workdir/staging_dir
-          
-          rm -rf "$BUILD_DIR/tmp" "$BUILD_DIR/staging_dir"
+          mkdir -p /workdir/tmp /workdir/staging_dir /workdir/dl-cache "$OUTPUT_DIR" "$BUILD_DIR"
+          sudo chown -R $(id -u):$(id -g) /workdir/* "$OUTPUT_DIR" "$BUILD_DIR"
+
+          rm -rf "$BUILD_DIR/tmp" "$BUILD_DIR/staging_dir" "$BUILD_DIR/dl"
           ln -s /workdir/tmp "$BUILD_DIR/tmp"
           ln -s /workdir/staging_dir "$BUILD_DIR/staging_dir"
-          
-          rm -rf "$BUILD_DIR/dl" && ln -s /workdir/dl-cache "$BUILD_DIR/dl"
-          log "dl 缓存映射完成：$BUILD_DIR/dl -> /workdir/dl-cache"
+          ln -s /workdir/dl-cache "$BUILD_DIR/dl"
 
           ts=$(date +'%Y%m%d%H%M%S')
           echo "release_tag=OpenWRT_Build_$ts" >> "$GITHUB_ENV"
 
-          log "依赖安装与构建磁盘挂载完成"
-          eval "df -hT $REDIRECT"
-
       - name: 收集所有 config 子目录
         id: get-configs
         run: |
-          log() { echo "[$(date '+%F %T')] $*"; }
-          log "扫描 config 目录获取配置列表"
-          CONFIG_LIST=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | jq -R '@json' | jq -cs .)
-          echo "config_list=$CONFIG_LIST" >> "$GITHUB_OUTPUT"
-          log "配置列表收集完成"
+          CONFIG_LIST=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
+          echo "configs=$CONFIG_LIST" >> "$GITHUB_OUTPUT"
 
       - name: 克隆 OpenWrt 源码
         run: |
           log() { echo "[$(date '+%F %T')] $*"; }
-          [ "$LOG_SILENT" = true ] && REDIRECT="" || REDIRECT="> /dev/null 2>&1"
+          if [ "$LOG_SILENT" = true ]; then REDIRECT="> /dev/null 2>&1"; else REDIRECT=""; fi
 
-          log "开始克隆源码到临时目录"
           TEMP_DIR="$WORKSPACE_DIR/tmp_source"
           rm -rf "$TEMP_DIR"/*
 
@@ -121,54 +111,75 @@ jobs:
           mv -f "$TEMP_DIR"/* "$BUILD_DIR"/
           shopt -u dotglob
           rm -rf "$TEMP_DIR"
-          log "源码克隆完成"
 
-      - name: 按配置依次构建固件
+      - name: 按配置构建固件
         run: |
-          set -e
           log() { echo "[$(date '+%F %T')] $*"; }
-          [ "$LOG_SILENT" = true ] && REDIRECT="> /dev/null 2>&1" || REDIRECT=""
+          if [ "$LOG_SILENT" = true ]; then REDIRECT="> /dev/null 2>&1"; else REDIRECT=""; fi
 
-          CONFIG_ARRAY=${{ steps.get-configs.outputs.configs }}
-          log "待构建配置列表: $CONFIG_ARRAY"
-
+          CONFIG_ARRAY="${{ steps.get-configs.outputs.configs }}"
           for cfg in $CONFIG_ARRAY; do
-            log "构建配置：$cfg"
-            [ -f "$WORKSPACE_DIR/diy-part1.sh" ] && chmod +x "$WORKSPACE_DIR/diy-part1.sh" && cd "$BUILD_DIR" && "$WORKSPACE_DIR/diy-part1.sh"
-            [ -f "$WORKSPACE_DIR/config/$cfg/diy-part3.sh" ] && chmod +x "$WORKSPACE_DIR/config/$cfg/diy-part3.sh" && cd "$BUILD_DIR" && "$WORKSPACE_DIR/config/$cfg/diy-part3.sh"
+            log "开始构建配置：$cfg"
+
+            # 执行自定义步骤1
+            if [ -f "$WORKSPACE_DIR/diy-part1.sh" ]; then
+              log "执行 DIY 脚本 1"
+              chmod +x "$WORKSPACE_DIR/diy-part1.sh"
+              cd "$BUILD_DIR" && "$WORKSPACE_DIR/diy-part1.sh"
+            fi
+
+            # 执行自定义步骤3
+            if [ -f "$WORKSPACE_DIR/config/$cfg/diy-part3.sh" ]; then
+              log "执行 DIY 脚本 3"
+              chmod +x "$WORKSPACE_DIR/config/$cfg/diy-part3.sh"
+              cd "$BUILD_DIR" && "$WORKSPACE_DIR/config/$cfg/diy-part3.sh"
+            fi
 
             cd "$BUILD_DIR"
             eval "./scripts/feeds update -a $REDIRECT"
             eval "./scripts/feeds install -a $REDIRECT"
 
             cp -f "$WORKSPACE_DIR/config/$cfg/$CONFIG_FILE" .config
-            [ -d "$WORKSPACE_DIR/config/$cfg/$CUSTOM_PKG_DIR" ] && cp -rf "$WORKSPACE_DIR/config/$cfg/$CUSTOM_PKG_DIR" package/
+
+            # 复制自定义包（如存在）
+            if [ -d "$WORKSPACE_DIR/config/$cfg/$CUSTOM_PKG_DIR" ]; then
+              log "复制自定义包目录：$CUSTOM_PKG_DIR"
+              cp -rf "$WORKSPACE_DIR/config/$cfg/$CUSTOM_PKG_DIR" package/
+            fi
 
             eval "make defconfig $REDIRECT"
             eval "make download -j$(nproc) || make download -j1 || make download -j8 $REDIRECT"
-            eval "find dl -size -1024c -exec ls -l {} \; $REDIRECT"
             eval "find dl -size -1024c -exec rm -f {} \; $REDIRECT"
 
-            [ -f "$WORKSPACE_DIR/diy-part2.sh" ] && chmod +x "$WORKSPACE_DIR/diy-part2.sh" && cd "$BUILD_DIR" && "$WORKSPACE_DIR/diy-part2.sh"
+            # 执行自定义步骤2
+            if [ -f "$WORKSPACE_DIR/diy-part2.sh" ]; then
+              log "执行 DIY 脚本 2"
+              chmod +x "$WORKSPACE_DIR/diy-part2.sh"
+              cd "$BUILD_DIR" && "$WORKSPACE_DIR/diy-part2.sh"
+            fi
 
-            log "开始编译"
+            log "开始编译 $cfg"
             eval "make -j$(nproc) V=s || make -j1 V=s || make -j1 $REDIRECT"
-            log "编译 $cfg 完成"
 
             find bin/targets -type f \( -name '*.img.gz' -o -name '*.bin' \) \
               | grep -Ev 'kernel\\.bin$|rootfs\\.img\\.gz$' \
               | while read -r img; do
                   base=$(basename "$img")
                   cp "$img" "$OUTPUT_DIR/${cfg}_$base"
-                  log "产出：${cfg}_$base"
+                  log "输出固件：${cfg}_$base"
                 done
 
-            [ -f "$WORKSPACE_DIR/config/$cfg/diy-part4.sh" ] && chmod +x "$WORKSPACE_DIR/config/$cfg/diy-part4.sh" && cd "$BUILD_DIR" && "$WORKSPACE_DIR/config/$cfg/diy-part4.sh"
+            # 执行自定义步骤4
+            if [ -f "$WORKSPACE_DIR/config/$cfg/diy-part4.sh" ]; then
+              log "执行 DIY 脚本 4"
+              chmod +x "$WORKSPACE_DIR/config/$cfg/diy-part4.sh"
+              cd "$BUILD_DIR" && "$WORKSPACE_DIR/config/$cfg/diy-part4.sh"
+            fi
 
             rm -f .config && rm -rf bin/targets/*
           done
 
-      - name: 发布到 GitHub Release
+      - name: 发布固件到 GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.release_tag }}
