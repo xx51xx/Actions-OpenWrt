@@ -222,53 +222,6 @@ jobs:
             REDIRECT=""
           fi
 
-          disk_usage_summary() {
-            local root_tot root_used root_pct
-            local build_tot build_used build_pct
-            local mem_tot_h mem_used_h mem_avail_h cache_h
-            local mem_tot_m mem_used_m mem_avail_m used_pct avail_pct
-          
-            # 1. 根分区（/）使用情况
-            read root_tot root_used _ root_pct < <(
-              df -h / | awk 'NR==2{sub(/%/,"",$5);print $2,$3,$4,$5}'
-            )
-          
-            # 2. /builder 分区使用情况（若不存在则置 N/A/0）
-            if df -h /builder &>/dev/null; then
-              read build_tot build_used _ build_pct < <(
-                df -h /builder | awk 'NR==2{sub(/%/,"",$5);print $2,$3,$4,$5}'
-              )
-            else
-              build_tot=N/A build_used=N/A build_pct=0
-            fi
-          
-            # 3. 内存 human-readable + 缓存合并
-            read mem_tot_h mem_used_h mem_avail_h cache_h < <(
-              free -h | awk 'NR==2{
-                sub(/iB/,"",$2); sub(/iB/,"",$3);
-                sub(/iB/,"",$6); sub(/iB/,"",$7);
-                print $2,$3,$4,$6 "+" $7
-              }'
-            )
-          
-            # 4. 内存百分比计算（用 m 单位保证整数精度）
-            read mem_tot_m mem_used_m mem_avail_m < <(
-              free -m | awk 'NR==2{print $2,$3,$7}'
-            )
-            used_pct=$(( mem_used_m * 100 / mem_tot_m ))
-            avail_pct=$(( mem_avail_m * 100 / mem_tot_m ))
-          
-            # 5. 输出单行结果
-            printf "\n%-10s | %-20s | %-20s\n" "类别" "已用/总量 (使用率)" "剩余/可用"
-            printf -- "--------------------------------------------------------------\n"
-            printf "%-10s | %-20s | %-20s\n" \
-              "/root"    "${root_used}/${root_tot} (${root_pct}%%)"    "$((100 - root_pct))%% 空闲" \
-              "/builder" "${build_used}/${build_tot} (${build_pct}%%)" "$((100 - build_pct))%% 空闲" \
-              "内存"     "${mem_used_h}/${mem_tot_h} (${used_pct}%%)"  "${avail_pct}%% 可用" \
-              "缓存"     "${cache_h}"                                   "-"
-
-          }
-
           # 扫描 config 子目录生成 JSON 列表
           CONFIG_LIST=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | jq -R . | jq -s .)
 
@@ -277,10 +230,7 @@ jobs:
           
           for cfg in $(echo "$CONFIG_LIST" | jq -r '.[]'); do
             log "开始构建配置:$cfg"
-            
-            # 输出系统硬盘、内存信息
-            disk_usage_summary
-
+          
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
             fi
@@ -402,9 +352,7 @@ jobs:
 
             rm -f .config
             rm -rf bin/targets/*
-
-            # 输出系统硬盘、内存信息
-            disk_usage_summary
+            
             log "$cfg 构建结束"
             # 返回工作目录
             cd $WORKSPACE_DIR
