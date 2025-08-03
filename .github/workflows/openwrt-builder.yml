@@ -291,7 +291,7 @@ jobs:
             
             # defconfig 与依赖下载
             eval "make defconfig $REDIRECT"
-            eval "make download -j$(nproc) || make download -j1 || make download -j8 $REDIRECT"
+            eval "make download -j$(nproc) $REDIRECT|| make download -j1 $REDIRECT|| make download -j8 $REDIRECT"
             eval "find dl -size -1024c -exec ls -l {} \; $REDIRECT"
             eval "find dl -size -1024c -exec rm -f {} \; $REDIRECT"
 
@@ -312,7 +312,7 @@ jobs:
             fi
 
             log "开始编译 $cfg"
-            eval "make -j$(nproc) V=s || make -j1 V=s || make -j1 $REDIRECT"
+            eval "make -j$(nproc) V=s $REDIRECT || make -j1 V=s $REDIRECT || make -j1 $REDIRECT"
 
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
