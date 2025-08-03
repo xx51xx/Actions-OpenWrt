@@ -41,23 +41,57 @@ jobs:
           }
 
           disk_usage_summary() {
-            local output
+            local output disk_root disk_builder mem_total mem_used mem_free mem_cache mem_buff
+          
+            # 1. 磁盘空间信息
             output=$(df -h | awk '
               $6=="/" || $6=="/builder" {
                 used=$3; avail=$4; total=$2;
                 sub(/%/, "", $5);
                 remain=100 - $5;
                 if ($6 == "/") {
-                  root = sprintf("路径: %-8s 总: %-6s 已用: %-6s 剩余: %2d%%", $6, total, used, remain);
+                  root = sprintf("路径:%-8s 总:%-5s 已用:%-5s 剩余:%3d%%", $6, total, used, remain);
                 } else if ($6 == "/builder") {
-                  builder = sprintf("路径: %-8s 总: %-6s 已用: %-6s 剩余: %2d%%", $6, total, used, remain);
+                  builder = sprintf("路径:%-8s 总:%-5s 已用:%-5s 剩余:%3d%%", $6, total, used, remain);
                 }
               }
               END {
-                print "硬盘空间: " root " | " builder
+                print root " | " builder
               }')
-            echo "$output"
+          
+            # 2. 内存信息，使用 free -h ，取行 2（Mem:）和行 3（-/+ buffers/cache:）
+            read -r mem_total mem_used mem_free mem_shared mem_buff mem_cache <<<$(free -h | awk '
+              NR==2 {total=$2; used=$3; free=$4; shared=$5; buff=$6; cache=$7;}
+              END {print total, used, free, shared, buff, cache;}')
+          
+            # 3. 计算剩余内存 = free + buff + cache（即可立即用的内存）
+            mem_free_num=$(free -m | awk 'NR==2{print $4}') # free 内存(MB)
+            mem_buff_num=$(free -m | awk 'NR==2{print $6}') # buff 内存(MB)
+            mem_cache_num=$(free -m | awk 'NR==2{print $7}') # cache 内存(MB)
+            mem_used_num=$(free -m | awk 'NR==2{print $3}') # used 内存(MB)
+            mem_total_num=$(free -m | awk 'NR==2{print $2}') # total 内存(MB)
+          
+            mem_available_num=$((mem_free_num + mem_buff_num + mem_cache_num))
+            mem_used_percent=$((mem_used_num * 100 / mem_total_num))
+            mem_avail_percent=$((mem_available_num * 100 / mem_total_num))
+          
+            # 4. 格式化内存输出（用 GB 单位，保留整数）
+            mem_total_fmt=$(free -h | awk 'NR==2{print $2}')
+            mem_used_fmt=$(free -h | awk 'NR==2{print $3}')
+            mem_avail_fmt=$(free -h | awk 'NR==2{print $4}')
+            mem_cache_fmt=$(free -h | awk 'NR==2{print $7}')
+          
+            # 5. 缓存空间 = buff + cache
+            cache_total_num=$((mem_buff_num + mem_cache_num))
+            cache_total_fmt="$(free -h | awk 'NR==2{print $6}') + $(free -h | awk 'NR==2{print $7}')"
+            cache_used_fmt="$mem_cache_fmt"
+            cache_free_num=$((mem_total_num - mem_used_num - cache_total_num))
+            cache_free_fmt=$(free -h | awk 'NR==3{print $7}')  # -/+ buffers/cache行可用内存
+          
+            # 6. 输出结果
+            echo "硬盘空间: $output | 内存空间: 总:$mem_total_fmt 已用:$mem_used_fmt 剩余:${mem_avail_percent}% | 缓存空间: 总:${cache_total_fmt} 已用:${cache_used_fmt} 剩余:未知"
           }
+
 
 
           # 环境变量以允许 root
@@ -242,6 +276,58 @@ jobs:
             REDIRECT=""
           fi
 
+          disk_usage_summary() {
+            local output disk_root disk_builder mem_total mem_used mem_free mem_cache mem_buff
+          
+            # 1. 磁盘空间信息
+            output=$(df -h | awk '
+              $6=="/" || $6=="/builder" {
+                used=$3; avail=$4; total=$2;
+                sub(/%/, "", $5);
+                remain=100 - $5;
+                if ($6 == "/") {
+                  root = sprintf("路径:%-8s 总:%-5s 已用:%-5s 剩余:%3d%%", $6, total, used, remain);
+                } else if ($6 == "/builder") {
+                  builder = sprintf("路径:%-8s 总:%-5s 已用:%-5s 剩余:%3d%%", $6, total, used, remain);
+                }
+              }
+              END {
+                print root " | " builder
+              }')
+          
+            # 2. 内存信息，使用 free -h ，取行 2（Mem:）和行 3（-/+ buffers/cache:）
+            read -r mem_total mem_used mem_free mem_shared mem_buff mem_cache <<<$(free -h | awk '
+              NR==2 {total=$2; used=$3; free=$4; shared=$5; buff=$6; cache=$7;}
+              END {print total, used, free, shared, buff, cache;}')
+          
+            # 3. 计算剩余内存 = free + buff + cache（即可立即用的内存）
+            mem_free_num=$(free -m | awk 'NR==2{print $4}') # free 内存(MB)
+            mem_buff_num=$(free -m | awk 'NR==2{print $6}') # buff 内存(MB)
+            mem_cache_num=$(free -m | awk 'NR==2{print $7}') # cache 内存(MB)
+            mem_used_num=$(free -m | awk 'NR==2{print $3}') # used 内存(MB)
+            mem_total_num=$(free -m | awk 'NR==2{print $2}') # total 内存(MB)
+          
+            mem_available_num=$((mem_free_num + mem_buff_num + mem_cache_num))
+            mem_used_percent=$((mem_used_num * 100 / mem_total_num))
+            mem_avail_percent=$((mem_available_num * 100 / mem_total_num))
+          
+            # 4. 格式化内存输出（用 GB 单位，保留整数）
+            mem_total_fmt=$(free -h | awk 'NR==2{print $2}')
+            mem_used_fmt=$(free -h | awk 'NR==2{print $3}')
+            mem_avail_fmt=$(free -h | awk 'NR==2{print $4}')
+            mem_cache_fmt=$(free -h | awk 'NR==2{print $7}')
+          
+            # 5. 缓存空间 = buff + cache
+            cache_total_num=$((mem_buff_num + mem_cache_num))
+            cache_total_fmt="$(free -h | awk 'NR==2{print $6}') + $(free -h | awk 'NR==2{print $7}')"
+            cache_used_fmt="$mem_cache_fmt"
+            cache_free_num=$((mem_total_num - mem_used_num - cache_total_num))
+            cache_free_fmt=$(free -h | awk 'NR==3{print $7}')  # -/+ buffers/cache行可用内存
+          
+            # 6. 输出结果
+            echo "硬盘空间: $output | 内存空间: 总:$mem_total_fmt 已用:$mem_used_fmt 剩余:${mem_avail_percent}% | 缓存空间: 总:${cache_total_fmt} 已用:${cache_used_fmt} 剩余:未知"
+          }
+      
           # 扫描 config 子目录生成 JSON 列表
           CONFIG_LIST=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | jq -R . | jq -s .)
 
@@ -249,7 +335,7 @@ jobs:
           cd $WORKSPACE_DIR
           
           for cfg in $(echo "$CONFIG_LIST" | jq -r '.[]'); do
-            log "开始构建配置:$cfg"
+            log "开始构建配置:$cfg ,$(disk_usage_summary)"
 
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
@@ -272,7 +358,7 @@ jobs:
             fi
 
             # 更新OpenWrt软件源
-            log "更新OpenWrt软件源"
+            log "更新OpenWrt软件源,$(disk_usage_summary)"
             eval "cd $BUILD_DIR && ./scripts/feeds update -a $REDIRECT"
             eval "cd $BUILD_DIR && ./scripts/feeds install -a $REDIRECT"
 
@@ -319,7 +405,7 @@ jobs:
             fi
             
             # defconfig 与 依赖下载
-            log "Defconfig 与依赖下载"
+            log "Defconfig 与依赖下载,$(disk_usage_summary)"
             eval "make defconfig $REDIRECT"
             eval "make download -j$(nproc) $REDIRECT|| make download -j1 $REDIRECT|| make download -j8 $REDIRECT"
             eval "find dl -size -1024c -exec ls -l {} \; $REDIRECT"
@@ -341,9 +427,9 @@ jobs:
               cd "$BUILD_DIR"
             fi
 
-            log "开始编译 $cfg"
+            log "开始编译 $cfg,$(disk_usage_summary)"
             eval "make -j$(nproc) V=s $REDIRECT || make -j1 V=s $REDIRECT || make -j1 $REDIRECT"
-            log "$cfg 编译完成"
+            log "$cfg 编译完成,$(disk_usage_summary)"
             
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
@@ -374,7 +460,7 @@ jobs:
             rm -rf bin/targets/*
 
             # 返回工作目录
-            log "$cfg 构建结束"
+            log "$cfg 构建结束,$(disk_usage_summary)"
             cd $WORKSPACE_DIR
             
           done
