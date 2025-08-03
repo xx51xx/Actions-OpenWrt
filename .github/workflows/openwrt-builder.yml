@@ -95,8 +95,12 @@ jobs:
           sudo ln -s /builder/workdir /workdir
       
           # 保留 img 目录在默认位置
-          sudo mkdir -p /img
-          sudo chown -R $(id -u):$(id -g) /img "$GITHUB_WORKSPACE_DIR"
+          if [ ! -d "/img" ]; then
+            mkdir -p "/img"
+          fi
+          
+          sudo chown -R $(id -u):$(id -g) /img
+          sudo chown -R $(id -u):$(id -g) "$WORKSPACE_DIR"
       
           # 确保 OPENWRT_BUILD_DIR 存在
           if [ ! -d "$OPENWRT_BUILD_DIR" ]; then
