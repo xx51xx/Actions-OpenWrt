@@ -67,7 +67,7 @@ jobs:
           eval "sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost $REDIRECT"
       
           # 设置时区与主机名
-          sudo timedatectl set-timezone "$TZ"
+          sudo timedatectl set-timezone "$TIMEZONE"
           sudo hostname OpenWrt
           sudo hostnamectl set-hostname OpenWrt
       
