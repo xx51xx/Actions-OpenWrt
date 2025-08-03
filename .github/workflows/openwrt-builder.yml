@@ -15,7 +15,7 @@ jobs:
       REPO_BRANCH: master                                                 # 克隆的分支
       CUSTOM_PKG_DIR: hello-openwrt                                       # 每个 config 子目录下的自定义包目录名
       CONFIG_FILE: .config                                                # 每个 config 子目录下的配置文件名
-      LOG_SILENT: false                                                    # 是否静默日志输出：true 输出日志，false 静默
+      LOG_SILENT: true                                                    # 是否静默日志输出：true 输出日志，false 静默
       
       TIMEZONE: Asia/Shanghai                                             # 时区设置，用于 date/timedatectl
       BUILD_DIR: ${{ github.workspace }}/openwrt                          # 源码与构建输出目录
@@ -41,58 +41,44 @@ jobs:
           }
 
           disk_usage_summary() {
-            local output disk_root disk_builder mem_total mem_used mem_free mem_cache mem_buff
+            local root_tot root_used root_pct
+            local build_tot build_used build_pct
+            local mem_tot_h mem_used_h mem_avail_h cache_h
+            local mem_tot_m mem_used_m mem_avail_m used_pct avail_pct
           
-            # 1. 磁盘空间信息
-            output=$(df -h | awk '
-              $6=="/" || $6=="/builder" {
-                used=$3; avail=$4; total=$2;
-                sub(/%/, "", $5);
-                remain=100 - $5;
-                if ($6 == "/") {
-                  root = sprintf("路径:%-8s 总:%-5s 已用:%-5s 剩余:%3d%%", $6, total, used, remain);
-                } else if ($6 == "/builder") {
-                  builder = sprintf("路径:%-8s 总:%-5s 已用:%-5s 剩余:%3d%%", $6, total, used, remain);
-                }
-              }
-              END {
-                print root " | " builder
-              }')
+            # 1. 根分区（/）使用情况
+            read root_tot root_used _ root_pct < <(
+              df -h / | awk 'NR==2{sub(/%/,"",$5);print $2,$3,$4,$5}'
+            )
           
-            # 2. 内存信息，使用 free -h ，取行 2（Mem:）和行 3（-/+ buffers/cache:）
-            read -r mem_total mem_used mem_free mem_shared mem_buff mem_cache <<<$(free -h | awk '
-              NR==2 {total=$2; used=$3; free=$4; shared=$5; buff=$6; cache=$7;}
-              END {print total, used, free, shared, buff, cache;}')
+            # 2. /builder 分区使用情况（若不存在则置 N/A/0）
+            if df -h /builder &>/dev/null; then
+              read build_tot build_used _ build_pct < <(
+                df -h /builder | awk 'NR==2{sub(/%/,"",$5);print $2,$3,$4,$5}'
+              )
+            else
+              build_tot=N/A build_used=N/A build_pct=0
+            fi
           
-            # 3. 计算剩余内存 = free + buff + cache（即可立即用的内存）
-            mem_free_num=$(free -m | awk 'NR==2{print $4}') # free 内存(MB)
-            mem_buff_num=$(free -m | awk 'NR==2{print $6}') # buff 内存(MB)
-            mem_cache_num=$(free -m | awk 'NR==2{print $7}') # cache 内存(MB)
-            mem_used_num=$(free -m | awk 'NR==2{print $3}') # used 内存(MB)
-            mem_total_num=$(free -m | awk 'NR==2{print $2}') # total 内存(MB)
+            # 3. 内存 human-readable + 缓存合并
+            read mem_tot_h mem_used_h mem_avail_h cache_h < <(
+              free -h | awk 'NR==2{
+                sub(/iB/,"",$2); sub(/iB/,"",$3);
+                sub(/iB/,"",$6); sub(/iB/,"",$7);
+                print $2,$3,$4,$6 "+" $7
+              }'
+            )
           
-            mem_available_num=$((mem_free_num + mem_buff_num + mem_cache_num))
-            mem_used_percent=$((mem_used_num * 100 / mem_total_num))
-            mem_avail_percent=$((mem_available_num * 100 / mem_total_num))
+            # 4. 内存百分比计算（用 m 单位保证整数精度）
+            read mem_tot_m mem_used_m mem_avail_m < <(
+              free -m | awk 'NR==2{print $2,$3,$7}'
+            )
+            used_pct=$(( mem_used_m * 100 / mem_tot_m ))
+            avail_pct=$(( mem_avail_m * 100 / mem_tot_m ))
           
-            # 4. 格式化内存输出（用 GB 单位，保留整数）
-            mem_total_fmt=$(free -h | awk 'NR==2{print $2}')
-            mem_used_fmt=$(free -h | awk 'NR==2{print $3}')
-            mem_avail_fmt=$(free -h | awk 'NR==2{print $4}')
-            mem_cache_fmt=$(free -h | awk 'NR==2{print $7}')
-          
-            # 5. 缓存空间 = buff + cache
-            cache_total_num=$((mem_buff_num + mem_cache_num))
-            cache_total_fmt="$(free -h | awk 'NR==2{print $6}') + $(free -h | awk 'NR==2{print $7}')"
-            cache_used_fmt="$mem_cache_fmt"
-            cache_free_num=$((mem_total_num - mem_used_num - cache_total_num))
-            cache_free_fmt=$(free -h | awk 'NR==3{print $7}')  # -/+ buffers/cache行可用内存
-          
-            # 6. 输出结果
-            echo "硬盘空间: $output | 内存空间: 总:$mem_total_fmt 已用:$mem_used_fmt 剩余:${mem_avail_percent}% | 缓存空间: 总:${cache_total_fmt} 已用:${cache_used_fmt} 剩余:未知"
+            # 5. 输出单行结果
+            echo "硬盘/:${root_used}/${root_tot}(${root_pct}%用,$((100-root_pct))%空)|/builder:${build_used}/${build_tot}(${build_pct}%用,$((100-build_pct))%空)|内存:${mem_used_h}/${mem_tot_h}(${used_pct}%用,${avail_pct}%可用)|缓存:${cache_h}"
           }
-
-
 
           # 环境变量以允许 root
           echo "FORCE_UNSAFE_CONFIGURE=1" >> "$GITHUB_ENV"   
@@ -277,57 +263,45 @@ jobs:
           fi
 
           disk_usage_summary() {
-            local output disk_root disk_builder mem_total mem_used mem_free mem_cache mem_buff
+            local root_tot root_used root_pct
+            local build_tot build_used build_pct
+            local mem_tot_h mem_used_h mem_avail_h cache_h
+            local mem_tot_m mem_used_m mem_avail_m used_pct avail_pct
           
-            # 1. 磁盘空间信息
-            output=$(df -h | awk '
-              $6=="/" || $6=="/builder" {
-                used=$3; avail=$4; total=$2;
-                sub(/%/, "", $5);
-                remain=100 - $5;
-                if ($6 == "/") {
-                  root = sprintf("路径:%-8s 总:%-5s 已用:%-5s 剩余:%3d%%", $6, total, used, remain);
-                } else if ($6 == "/builder") {
-                  builder = sprintf("路径:%-8s 总:%-5s 已用:%-5s 剩余:%3d%%", $6, total, used, remain);
-                }
-              }
-              END {
-                print root " | " builder
-              }')
+            # 1. 根分区（/）使用情况
+            read root_tot root_used _ root_pct < <(
+              df -h / | awk 'NR==2{sub(/%/,"",$5);print $2,$3,$4,$5}'
+            )
           
-            # 2. 内存信息，使用 free -h ，取行 2（Mem:）和行 3（-/+ buffers/cache:）
-            read -r mem_total mem_used mem_free mem_shared mem_buff mem_cache <<<$(free -h | awk '
-              NR==2 {total=$2; used=$3; free=$4; shared=$5; buff=$6; cache=$7;}
-              END {print total, used, free, shared, buff, cache;}')
+            # 2. /builder 分区使用情况（若不存在则置 N/A/0）
+            if df -h /builder &>/dev/null; then
+              read build_tot build_used _ build_pct < <(
+                df -h /builder | awk 'NR==2{sub(/%/,"",$5);print $2,$3,$4,$5}'
+              )
+            else
+              build_tot=N/A build_used=N/A build_pct=0
+            fi
           
-            # 3. 计算剩余内存 = free + buff + cache（即可立即用的内存）
-            mem_free_num=$(free -m | awk 'NR==2{print $4}') # free 内存(MB)
-            mem_buff_num=$(free -m | awk 'NR==2{print $6}') # buff 内存(MB)
-            mem_cache_num=$(free -m | awk 'NR==2{print $7}') # cache 内存(MB)
-            mem_used_num=$(free -m | awk 'NR==2{print $3}') # used 内存(MB)
-            mem_total_num=$(free -m | awk 'NR==2{print $2}') # total 内存(MB)
+            # 3. 内存 human-readable + 缓存合并
+            read mem_tot_h mem_used_h mem_avail_h cache_h < <(
+              free -h | awk 'NR==2{
+                sub(/iB/,"",$2); sub(/iB/,"",$3);
+                sub(/iB/,"",$6); sub(/iB/,"",$7);
+                print $2,$3,$4,$6 "+" $7
+              }'
+            )
           
-            mem_available_num=$((mem_free_num + mem_buff_num + mem_cache_num))
-            mem_used_percent=$((mem_used_num * 100 / mem_total_num))
-            mem_avail_percent=$((mem_available_num * 100 / mem_total_num))
+            # 4. 内存百分比计算（用 m 单位保证整数精度）
+            read mem_tot_m mem_used_m mem_avail_m < <(
+              free -m | awk 'NR==2{print $2,$3,$7}'
+            )
+            used_pct=$(( mem_used_m * 100 / mem_tot_m ))
+            avail_pct=$(( mem_avail_m * 100 / mem_tot_m ))
           
-            # 4. 格式化内存输出（用 GB 单位，保留整数）
-            mem_total_fmt=$(free -h | awk 'NR==2{print $2}')
-            mem_used_fmt=$(free -h | awk 'NR==2{print $3}')
-            mem_avail_fmt=$(free -h | awk 'NR==2{print $4}')
-            mem_cache_fmt=$(free -h | awk 'NR==2{print $7}')
-          
-            # 5. 缓存空间 = buff + cache
-            cache_total_num=$((mem_buff_num + mem_cache_num))
-            cache_total_fmt="$(free -h | awk 'NR==2{print $6}') + $(free -h | awk 'NR==2{print $7}')"
-            cache_used_fmt="$mem_cache_fmt"
-            cache_free_num=$((mem_total_num - mem_used_num - cache_total_num))
-            cache_free_fmt=$(free -h | awk 'NR==3{print $7}')  # -/+ buffers/cache行可用内存
-          
-            # 6. 输出结果
-            echo "硬盘空间: $output | 内存空间: 总:$mem_total_fmt 已用:$mem_used_fmt 剩余:${mem_avail_percent}% | 缓存空间: 总:${cache_total_fmt} 已用:${cache_used_fmt} 剩余:未知"
+            # 5. 输出单行结果
+            echo "硬盘/:${root_used}/${root_tot}(${root_pct}%用,$((100-root_pct))%空)|/builder:${build_used}/${build_tot}(${build_pct}%用,$((100-build_pct))%空)|内存:${mem_used_h}/${mem_tot_h}(${used_pct}%用,${avail_pct}%可用)|缓存:${cache_h}"
           }
-      
+
           # 扫描 config 子目录生成 JSON 列表
           CONFIG_LIST=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | jq -R . | jq -s .)
 
