@@ -59,36 +59,72 @@ jobs:
             log "TIMEZONE 未设置，跳过设置时区"
           fi
 
-          sudo hostname OpenWrt && sudo hostnamectl set-hostname OpenWrt
+          sudo hostname OpenWrt 
+          sudo hostnamectl set-hostname OpenWrt
 
           log "挂载 LVM 磁盘用于构建"
           mnt_size=$(( $(df -h /mnt | tail -1 | awk '{print $4}' | sed 's/[^0-9]//g') - 1 ))
           root_size=$(( $(df -h / | tail -1 | awk '{print $4}' | sed 's/[^0-9]//g') - 4 ))
 
-          sudo truncate -s "${mnt_size}G" /mnt/mnt.img
-          sudo truncate -s "${root_size}G" /root.img
+          eval "sudo truncate -s "${mnt_size}G" /mnt/mnt.img $REDIRECT"
+          eval "sudo truncate -s "${root_size}G" /root.img $REDIRECT"
 
-          sudo losetup /dev/loop6 /mnt/mnt.img
-          sudo losetup /dev/loop7 /root.img
+          eval "sudo losetup /dev/loop6 /mnt/mnt.img $REDIRECT"
+          eval "sudo losetup /dev/loop7 /root.img $REDIRECT"
 
-          sudo pvcreate /dev/loop6 $REDIRECT
-          sudo pvcreate /dev/loop7 $REDIRECT
-          sudo vgcreate github /dev/loop6 /dev/loop7 $REDIRECT
-          sudo lvcreate -n runner -l 100%FREE github $REDIRECT
-          sudo mkfs.xfs /dev/github/runner $REDIRECT
+          eval "sudo pvcreate /dev/loop6 $REDIRECT $REDIRECT"
+          eval "sudo pvcreate /dev/loop7 $REDIRECT $REDIRECT"
+          eval "sudo vgcreate github /dev/loop6 /dev/loop7 $REDIRECT"
+          eval "sudo lvcreate -n runner -l 100%FREE github  $REDIRECT"
+          eval "sudo mkfs.xfs /dev/github/runner $REDIRECT"
 
-          sudo mkdir -p /builder && sudo mount /dev/github/runner /builder
-          sudo mkdir -p /builder/workdir && sudo chown -R $(id -u):$(id -g) /builder /builder/workdir
+          # 创建 /builder（如果不存在）
+          if [ ! -d "/builder" ]; then
+            sudo mkdir -p /builder
+          fi
+          
+          eval "sudo mount /dev/github/runner /builder $REDIRECT"
+          
+          # 创建 /builder/workdir（如果不存在）
+          if [ ! -d "/builder/workdir" ]; then
+            sudo mkdir -p /builder/workdir
+          fi
+          
+          # 设置 /builder 及其子目录的权限
+          sudo chown -R $(id -u):$(id -g) /builder /builder/workdir
 
-          sudo rm -rf /workdir && sudo ln -s /builder/workdir /workdir
-
-          mkdir -p /workdir/tmp /workdir/staging_dir /workdir/dl-cache "$OUTPUT_DIR" "$BUILD_DIR"
-          sudo chown -R $(id -u):$(id -g) /workdir/* "$OUTPUT_DIR" "$BUILD_DIR"
-
-          rm -rf "$BUILD_DIR/tmp" "$BUILD_DIR/staging_dir" "$BUILD_DIR/dl"
-          ln -s /workdir/tmp "$BUILD_DIR/tmp"
-          ln -s /workdir/staging_dir "$BUILD_DIR/staging_dir"
-          ln -s /workdir/dl-cache "$BUILD_DIR/dl"
+          sudo rm -rf /workdir 
+          sudo ln -s /builder/workdir /workdir
+          
+          # 创建 OpenWrt 构建缓存目录（如果不存在）
+          for dir in /workdir/tmp /workdir/staging_dir; do
+            if [ ! -d "$dir" ]; then
+              mkdir -p "$dir"
+              sudo chown -R $(id -u):$(id -g) "$dir"
+            fi
+          done
+          
+          # 创建 dl 缓存目录（如果不存在）
+          if [ ! -d /workdir/dl-cache ]; then
+            mkdir -p /workdir/dl-cache
+            sudo chown -R $(id -u):$(id -g) /workdir/dl-cache
+          fi
+          
+          # 创建构建输出目录（如果不存在）
+          if [ ! -d "$OUTPUT_DIR" ]; then
+            mkdir -p "$OUTPUT_DIR"
+            sudo chown -R $(id -u):$(id -g) "$OUTPUT_DIR"
+          fi
+          
+          # 创建 OpenWrt 源码目录（如果不存在）
+          if [ ! -d "$BUILD_DIR" ]; then
+            mkdir -p "$BUILD_DIR"
+            sudo chown -R $(id -u):$(id -g) "$BUILD_DIR"
+          fi
+          
+          sudo ln -s /workdir/tmp "$BUILD_DIR/tmp"
+          sudo ln -s /workdir/staging_dir "$BUILD_DIR/staging_dir"
+          sudo ln -s /workdir/dl-cache "$BUILD_DIR/dl"
 
           ts=$(date +'%Y%m%d%H%M%S')
           echo "release_tag=OpenWRT_Build_$ts" >> "$GITHUB_ENV"
