@@ -37,7 +37,7 @@ jobs:
           echo "FORCE_UNSAFE_CONFIGURE=1" >> "$GITHUB_ENV"   
           export FORCE_UNSAFE_CONFIGURE=1
 
-          # 定义不重要的目录
+          # 全局变量2
           env.TIMEZONE: Asia/Shanghai                             # 时区设置，用于 date/timedatectl
           env.BUILD_DIR: ${{ github.workspace }}/openwrt          # 源码与构建输出目录
           env.OUTPUT_DIR: ${{ github.workspace }}/img             # 最终固件存放目录
