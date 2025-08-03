@@ -161,58 +161,73 @@ jobs:
       - name: 按配置依次构建固件
         run: |
           set -e
-          log() { echo "[$(date '+%F %T')] $*"; }
-
+          # 日志函数
+          log(){ echo "[$(date '+%F %T')] $*"; }
+      
+          # 日志重定向设置
           if [ "$LOG_SILENT" = "true" ]; then
-            REDIRECT=""
+            REDIRECT="> /dev/null 2>&1"
           else
-            REDIRECT=" > /dev/null 2>&1"
+            REDIRECT=""
           fi
-
-          CONFIG_ARRAY=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n' \ | sort \ | jq -R . \ | jq -cs .)
-          
+      
+          # 读取配置列表并遍历
+          CONFIG_ARRAY=$(echo "${{ steps.get-configs.outputs.config_list }}" | jq -r '.[]')
           log "待构建配置列表: $CONFIG_ARRAY"
-
+      
           for cfg in $CONFIG_ARRAY; do
+          
             log "构建配置：$cfg"
-
-            [ -f "$WORKSPACE_DIR/diy-part1.sh" ] && chmod +x "$WORKSPACE_DIR/diy-part1.sh" \
-              && cd "$BUILD_DIR" \
-              && "$WORKSPACE_DIR/diy-part1.sh"
-
-            [ -f "$WORKSPACE_DIR/config/$cfg/diy-part3.sh" ] && chmod +x "$WORKSPACE_DIR/config/$cfg/diy-part3.sh" \
-              && cd "$BUILD_DIR" \
-              && "$WORKSPACE_DIR/config/$cfg/diy-part3.sh"
-
+      
+            # 可选前置 DIY 脚本
+            if [ -f "$WORKSPACE_DIR/diy-part1.sh" ]; then
+              chmod +x "$WORKSPACE_DIR/diy-part1.sh"
+              cd "$BUILD_DIR"
+              "$WORKSPACE_DIR/diy-part1.sh"
+            fi
+      
+            if [ -f "$WORKSPACE_DIR/config/$cfg/diy-part3.sh" ]; then
+              chmod +x "$WORKSPACE_DIR/config/$cfg/diy-part3.sh"
+              cd "$BUILD_DIR"
+              "$WORKSPACE_DIR/config/$cfg/diy-part3.sh"
+            fi
+      
             cd "$BUILD_DIR"
             log "更新并安装 feeds"
-            eval "./scripts/feeds update -a$REDIRECT"
-            eval "./scripts/feeds install -a$REDIRECT"
-
+            eval "./scripts/feeds update -a $REDIRECT"
+            eval "./scripts/feeds install -a $REDIRECT"
+      
+            # 复制配置文件并加入自定义包
             cp -f "$WORKSPACE_DIR/config/$cfg/$CONFIG_FILE" "$BUILD_DIR/.config"
             if [ -d "$WORKSPACE_DIR/config/$cfg/$CUSTOM_PKG_DIR" ]; then
               cp -rf "$WORKSPACE_DIR/config/$cfg/$CUSTOM_PKG_DIR" "$BUILD_DIR/package/"
             fi
-
+      
             log "执行 defconfig 并下载依赖"
-            eval "make defconfig$REDIRECT"
-            eval "make download -j$(nproc) || make download -j1 || make download -j8$REDIRECT"
-            eval "find dl -size -1024c -exec ls -l {} \;$REDIRECT"
-            eval "find dl -size -1024c -exec rm -f {} \;$REDIRECT"
-
-            [ -f "$WORKSPACE_DIR/diy-part2.sh" ] && chmod +x "$WORKSPACE_DIR/diy-part2.sh" \
-              && cd "$BUILD_DIR" \
-              && "$WORKSPACE_DIR/diy-part2.sh"
-
+            eval "make defconfig $REDIRECT"
+            eval "make download -j$(nproc) || make download -j1 || make download -j8 $REDIRECT"
+            eval "find dl -size -1024c -exec ls -l {} \; $REDIRECT"
+            eval "find dl -size -1024c -exec rm -f {} \; $REDIRECT"
+      
+            # 可选中期 DIY 脚本
+            if [ -f "$WORKSPACE_DIR/diy-part2.sh" ]; then
+              chmod +x "$WORKSPACE_DIR/diy-part2.sh"
+              cd "$BUILD_DIR"
+              "$WORKSPACE_DIR/diy-part2.sh"
+            fi
+      
             log "开始编译"
-            eval "make -j$(nproc) V=s || make -j1 V=s || make -j1$REDIRECT"
+            eval "make -j$(nproc) V=s || make -j1 V=s || make -j1 $REDIRECT"
             log "编译 $cfg 完成"
-
-            [ -f "$WORKSPACE_DIR/config/$cfg/diy-part4.sh" ] && chmod +x "$WORKSPACE_DIR/config/$cfg/diy-part4.sh" \
-              && cd "$BUILD_DIR" \
-              && "$WORKSPACE_DIR/config/$cfg/diy-part4.sh"
-
-            # 正确使用 read -r img 定义 $img，并用 basename 提取文件名
+      
+            # 可选后期 DIY 脚本
+            if [ -f "$WORKSPACE_DIR/config/$cfg/diy-part4.sh" ]; then
+              chmod +x "$WORKSPACE_DIR/config/$cfg/diy-part4.sh"
+              cd "$BUILD_DIR"
+              "$WORKSPACE_DIR/config/$cfg/diy-part4.sh"
+            fi
+      
+            # 收集并输出固件文件
             find "$BUILD_DIR/bin/targets" -type f \
               \( -name '*.img.gz' -o -name '*.bin' \) \
               | grep -Ev 'kernel\.bin$|rootfs\.img\.gz$' \
@@ -221,7 +236,8 @@ jobs:
                   cp "$img" "$OUTPUT_DIR/${cfg}_$base"
                   log "产出：${cfg}_$base"
                 done
-
+      
+            # 清理本次构建残留
             rm -f "$BUILD_DIR/.config"
             rm -rf "$BUILD_DIR/bin/targets"/*
           done
