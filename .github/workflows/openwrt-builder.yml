@@ -175,6 +175,8 @@ jobs:
             echo "[$current_time] $*"
           }
 
+          log "开始克隆 OpenWrt 源码"
+
           if [ "$LOG_SILENT" = true ]; then
             REDIRECT="> /dev/null 2>&1"
           else
@@ -198,6 +200,8 @@ jobs:
           shopt -u dotglob
           # 删除 临时源码目录
           rm -rf "$TEMP_DIR"
+          
+          log "克隆 OpenWrt 源码完成"
 
       # 第四步：按 config 子目录循环构建
       - name: 按配置构建固件                  
