@@ -33,7 +33,7 @@ jobs:
       - name: 安装系统依赖和扩展磁盘            
         run: |
           echo "正在运行 安装系统依赖和扩展磁盘" > /dev/null 2>&1
-          
+          df -h
           # 定义日志函数，格式 [YYYY-MM-DD HH:MM:SS] 消息
           log() {                                 
             current_time=$(date '+%F %T')
@@ -166,6 +166,7 @@ jobs:
           ts=$(date +'%Y%m%d%H%M%S')
           # 设置 release_tag 环境变量
           echo "release_tag=OpenWRT_Build_$ts" >> "$GITHUB_ENV"  
+          df -h
 
       # 第三步：克隆官方源码
       - name: 克隆 OpenWrt 源码                
