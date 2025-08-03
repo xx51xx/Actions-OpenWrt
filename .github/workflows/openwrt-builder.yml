@@ -171,7 +171,7 @@ jobs:
 
           CONFIG_ARRAY=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n' \ | sort \ | jq -R . \ | jq -cs .)
           
-          log "待构建配置: $CONFIG_ARRAY"
+          log "待构建配置列表: $CONFIG_ARRAY"
 
           for cfg in $CONFIG_ARRAY; do
             log "构建配置：$cfg"
