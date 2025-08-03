@@ -277,6 +277,8 @@ jobs:
           
           for cfg in $(echo "$CONFIG_LIST" | jq -r '.[]'); do
             log "开始构建配置:$cfg"
+            
+            # 输出系统硬盘、内存信息
             disk_usage_summary
 
             if [ ! -d "$BUILD_DIR" ]; then
@@ -401,9 +403,10 @@ jobs:
             rm -f .config
             rm -rf bin/targets/*
 
-            # 返回工作目录
-            log "$cfg 构建结束"
+            # 输出系统硬盘、内存信息
             disk_usage_summary
+            log "$cfg 构建结束"
+            # 返回工作目录
             cd $WORKSPACE_DIR
             
           done
