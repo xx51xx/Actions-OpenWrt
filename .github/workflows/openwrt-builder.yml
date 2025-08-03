@@ -24,7 +24,7 @@ jobs:
 
       # 第二步：安装系统依赖和扩展磁盘
       - name: 安装系统依赖和扩展磁盘            
-        run: >
+        run: |
           echo "正在运行 安装系统依赖和扩展磁盘" > /dev/null 2>&1
           
           # 定义日志函数，格式 [YYYY-MM-DD HH:MM:SS] 消息
@@ -160,7 +160,7 @@ jobs:
 
       # 第三步：克隆官方源码
       - name: 克隆 OpenWrt 源码                
-        run: >
+        run: |
           echo "正在运行 克隆 OpenWrt 源码" > /dev/null 2>&1
         
           log() {                            
@@ -194,7 +194,7 @@ jobs:
 
       # 第四步：按 config 子目录循环构建
       - name: 按配置构建固件                  
-        run: >
+        run: |
           echo "正在运行 按配置构建固件" > /dev/null 2>&1
           
           log() {
