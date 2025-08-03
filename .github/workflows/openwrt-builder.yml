@@ -56,18 +56,26 @@ jobs:
           eval "df -hT $REDIRECT"
       
           # 安装依赖
-          eval "sudo apt-get update -qq $REDIRECT"
-          eval "sudo apt-get install -y -qq ack antlr3 asciidoc autoconf automake autopoint bash bc binutils bison build-essential bzip2 ccache clang cmake cpio curl device-tree-compiler dos2unix fastjar fakeroot file flex g++ gawk gcc-multilib gettext git gperf haveged help2man intltool libglib2.0-dev libfuse-dev libgmp-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool libz-dev llvm lrzsz msmtp nano ninja-build patch pkgconf python3 python3-distutils python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto zlib1g-dev lvm2 xfsprogs $REDIRECT"
-      
-          # 清理空间
-          eval "sudo apt-get -qq autoremove --purge $REDIRECT"
-          eval "sudo apt-get -qq clean $REDIRECT"
-      
-          log "释放系统预装空间"
-          eval "sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost $REDIRECT"
-      
+          eval "sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL $REDIRECT"
+          eval "sudo docker image prune --all --force $REDIRECT"
+          eval "sudo -E apt-get -qq update $REDIRECT"
+          eval "sudo -E apt-get -qq -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
+                bzip2 ccache clang cmake cpio curl device-tree-compiler flex gawk gcc-multilib g++-multilib gettext \
+                genisoimage git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev \
+                libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev \
+                libreadline-dev libssl-dev libtool llvm lrzsz msmtp ninja-build p7zip p7zip-full patch pkgconf \
+                python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion \
+                swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev $REDIRECT"
+          
+          eval "sudo -E apt-get -qq autoremove --purge $REDIRECT"
+          eval "sudo -E apt-get -qq clean $REDIRECT"
+
           # 设置时区与主机名
-          sudo timedatectl set-timezone "$TIMEZONE"
+          if [ -n "$TIMEZONE" ]; then
+            sudo timedatectl set-timezone "$TIMEZONE"
+          else
+            log "TIMEZONE 未设置，跳过设置时区"
+          fi
           sudo hostname OpenWrt
           sudo hostnamectl set-hostname OpenWrt
       
@@ -90,24 +98,23 @@ jobs:
           sudo mkdir -p /builder/workdir
           sudo chown -R $(id -u):$(id -g) /builder /builder/workdir
           sudo chown -R $(id -u):$(id -g) "$WORKSPACE_DIR"
-      
-          # 删除 /workdir 原目录并链接至 /builder/workdir
+
+          # 删除 /workdir 原目录并建立软链接
           sudo rm -rf /workdir
           sudo ln -s /builder/workdir /workdir
       
           # 保留 img 目录在默认位置
-          if [ ! -d "/img" ]; then
-            sudo mkdir -p "/img"
-            sudo chown -R $(id -u):$(id -g) "/img"
+          if [ ! -d "$OUTPUT_DIR" ]; then
+            sudo mkdir -p "$OUTPUT_DIR"
+            sudo chown -R $(id -u):$(id -g) "$OUTPUT_DIR"
           fi
-          
       
-          # 确保 OPENWRT_BUILD_DIR 存在
-          if [ ! -d "$OPENWRT_BUILD_DIR" ]; then
-            mkdir -p "$OPENWRT_BUILD_DIR"
-            sudo chown -R $(id -u):$(id -g) "$OPENWRT_BUILD_DIR"
+          # 确保 BUILD_DIR 存在
+          if [ ! -d "$BUILD_DIR" ]; then
+            mkdir -p "$BUILD_DIR"
+            sudo chown -R $(id -u):$(id -g) "$BUILD_DIR"
           fi
-
+      
           # 创建共享缓存目录
           if [ ! -d "/workdir/dl-cache" ]; then
             mkdir -p "/workdir/dl-cache"
@@ -115,11 +122,11 @@ jobs:
           fi
       
           # 删除默认 dl 文件夹并软链接
-          rm -rf "$OPENWRT_BUILD_DIR/dl"
-          sudo ln -s /workdir/dl-cache "$OPENWRT_BUILD_DIR/dl"
+          rm -rf "$BUILD_DIR/dl"
+          ln -s /workdir/dl-cache "$BUILD_DIR/dl"
       
-          log "dl 缓存映射完成：$OPENWRT_BUILD_DIR/dl -> /workdir/dl-cache"
-          eval "ls -al $OPENWRT_BUILD_DIR | grep dl $REDIRECT"
+          log "dl 缓存映射完成：$BUILD_DIR/dl -> /workdir/dl-cache"
+          eval "ls -al $BUILD_DIR | grep dl $REDIRECT"
       
           # 设置 release tag
           ts=$(date +'%Y%m%d%H%M%S')
@@ -128,7 +135,7 @@ jobs:
       
           log "依赖安装与构建磁盘挂载完成"
           eval "df -hT $REDIRECT"
-      
+
 
       - name: 收集所有 config 子目录
         id: get-configs
@@ -243,7 +250,7 @@ jobs:
               \( -name '*.img.gz' -o -name '*.bin' \) \
               | grep -Ev 'kernel\.bin$|rootfs\.img\.gz$' \
               | while read -r img; do
-                  base=$(basename "$img")
+                  base=$(basename "$OUTPUT_DIR")
                   cp "$img" "$OUTPUT_DIR/${cfg}_$base"
                   log "产出：${cfg}_$base"
                 done
