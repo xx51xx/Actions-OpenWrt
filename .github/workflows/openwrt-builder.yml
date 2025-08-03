@@ -69,11 +69,7 @@ jobs:
             vim wget xmlto xxd zlib1g-dev"
 
           for pkg in $PACKAGES; do
-            if [ "$LOG_SILENT" = "true" ]; then
-              sudo -E apt-get -qq -y install "$pkg" >/dev/null 2>&1 || log "跳过不存在的软件包: $pkg"
-            else
-              sudo -E apt-get -qq -y install "$pkg" || log "跳过不存在的软件包: $pkg"
-            fi
+            eval "sudo -E apt-get -qq -y install \$pkg $REDIRECT" || log "跳过不存在的软件包: $pkg"
           done
 
           eval "sudo -E apt-get -qq autoremove --purge$REDIRECT"
