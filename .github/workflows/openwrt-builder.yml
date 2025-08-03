@@ -199,7 +199,7 @@ jobs:
           
           shopt -s dotglob
           # 移动 临时源码目录
-          mv -f "$TEMP_DIR"/* "$BUILD_DIR"/
+          sudo mv -f "$TEMP_DIR"/* "$BUILD_DIR"/
           shopt -u dotglob
           # 删除 临时源码目录
           rm -rf "$TEMP_DIR"
