@@ -33,12 +33,32 @@ jobs:
       - name: 安装系统依赖和扩展磁盘            
         run: |
           echo "正在运行 安装系统依赖和扩展磁盘" > /dev/null 2>&1
-          df -h
+          
           # 定义日志函数，格式 [YYYY-MM-DD HH:MM:SS] 消息
           log() {                                 
             current_time=$(date '+%F %T')
             echo "[$current_time] $*"
           }
+
+          disk_usage_summary() {
+            local output
+            output=$(df -h | awk '
+              $6=="/" || $6=="/builder" {
+                used=$3; avail=$4; total=$2;
+                sub(/%/, "", $5);
+                remain=100 - $5;
+                if ($6 == "/") {
+                  root = sprintf("路径: %-8s 总: %-6s 已用: %-6s 剩余: %2d%%", $6, total, used, remain);
+                } else if ($6 == "/builder") {
+                  builder = sprintf("路径: %-8s 总: %-6s 已用: %-6s 剩余: %2d%%", $6, total, used, remain);
+                }
+              }
+              END {
+                print "硬盘空间: " root " | " builder
+              }')
+            echo "$output"
+          }
+
 
           # 环境变量以允许 root
           echo "FORCE_UNSAFE_CONFIGURE=1" >> "$GITHUB_ENV"   
@@ -51,7 +71,8 @@ jobs:
             REDIRECT=""
           fi
 
-          log "清理不必要的软件包节省空间" 
+          
+          log "清理不必要的软件包节省空间,$disk_usage_summary" 
           
           # 清理 Docker 镜像
           eval "sudo docker image prune -af $REDIRECT"  
@@ -91,7 +112,7 @@ jobs:
           sudo hostname OpenWrt                 
           sudo hostnamectl set-hostname OpenWrt
 
-          log "挂载 LVM 磁盘用于构建"
+          log "挂载 LVM 磁盘用于构建,$disk_usage_summary"
 
           # 开始挂载磁盘
           mnt_size=$(( $(df -h /mnt | tail -1 | awk '{print $4}' | sed 's/[^0-9]//g') - 1 ))
@@ -160,7 +181,7 @@ jobs:
           sudo ln -s /workdir/staging_dir "$BUILD_DIR/staging_dir"
           sudo ln -s /workdir/dl-cache "$BUILD_DIR/dl"
 
-          log "挂载 LVM 磁盘完成"
+          log "挂载 LVM 磁盘完成,$disk_usage_summary"
 
           # 生成时间戳
           ts=$(date +'%Y%m%d%H%M%S')
