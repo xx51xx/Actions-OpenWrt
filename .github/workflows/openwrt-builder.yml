@@ -72,7 +72,7 @@ jobs:
           fi
 
           
-          log "清理不必要的软件包节省空间,$disk_usage_summary" 
+          log "清理不必要的软件包节省空间,$(disk_usage_summary)" 
           
           # 清理 Docker 镜像
           eval "sudo docker image prune -af $REDIRECT"  
@@ -112,7 +112,7 @@ jobs:
           sudo hostname OpenWrt                 
           sudo hostnamectl set-hostname OpenWrt
 
-          log "挂载 LVM 磁盘用于构建,$disk_usage_summary"
+          log "挂载 LVM 磁盘用于构建,$(disk_usage_summary)"
 
           # 开始挂载磁盘
           mnt_size=$(( $(df -h /mnt | tail -1 | awk '{print $4}' | sed 's/[^0-9]//g') - 1 ))
@@ -181,13 +181,12 @@ jobs:
           sudo ln -s /workdir/staging_dir "$BUILD_DIR/staging_dir"
           sudo ln -s /workdir/dl-cache "$BUILD_DIR/dl"
 
-          log "挂载 LVM 磁盘完成,$disk_usage_summary"
+          log "挂载 LVM 磁盘完成,$(disk_usage_summary)"
 
           # 生成时间戳
           ts=$(date +'%Y%m%d%H%M%S')
           # 设置 release_tag 环境变量
           echo "release_tag=OpenWRT_Build_$ts" >> "$GITHUB_ENV"  
-          df -h
 
       # 第三步：克隆官方源码
       - name: 克隆 OpenWrt 源码                
