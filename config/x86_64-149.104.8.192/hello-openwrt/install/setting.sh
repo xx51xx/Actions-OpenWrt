@@ -26,7 +26,6 @@ chmod -R 0644 /etc/config
 
 # 设置系统名
 uci set system.@system[0].hostname='OpenWRT'
-sed -i "s/^DISTRIB_DESCRIPTION='LEDE'/DISTRIB_DESCRIPTION='OpenWRT '/" /etc/openwrt_release
 
 # 修改默认主题
 # sed -i "s|option mediaurlbase '/luci-static/bootstrap'|option mediaurlbase '/luci-static/bootstrap-light'|g" /etc/config/luci
