@@ -283,9 +283,9 @@ jobs:
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
             fi
-            log "开始编译 $cfg"
+            # log "开始编译 $cfg"
             eval "make -j$(nproc) V=s $REDIRECT || make -j1 V=s $REDIRECT || make -j1 $REDIRECT"
-            log "$cfg 编译完成"
+            # log "$cfg 编译完成"
             
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
