@@ -62,7 +62,7 @@ BEGIN { in_block = 0 }
 
 
 # 修改 sysauth.htm 显示版权 feeds/luci/themes/luci-theme-bootstrap/ucode/template/themes/bootstrap/sysauth.ut
-sed -i -E "s/(blank_page:)[[:space:]]*true/\1 false/g" feeds/luci/themes/luci-theme-bootstrap/ucode/template/themes/bootstrap/sysauth.ut
+# sed -i -E "s/(blank_page:)[[:space:]]*true/\1 false/g" feeds/luci/themes/luci-theme-bootstrap/ucode/template/themes/bootstrap/sysauth.ut
 
 
 
