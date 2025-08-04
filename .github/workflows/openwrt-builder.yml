@@ -212,27 +212,27 @@ jobs:
             
             # DIY 脚本 1
             if [ -f "$WORKSPACE_DIR/diy-part1.sh" ]; then
-              log "执行 DIY 脚本 1"
+              # log "执行 DIY 脚本 1"
               chmod +x "$WORKSPACE_DIR/diy-part1.sh"
               cd "$BUILD_DIR" && "$WORKSPACE_DIR/diy-part1.sh"
               cd "$BUILD_DIR" 
             fi
             # DIY 脚本 3
             if [ -f "$WORKSPACE_DIR/config/$cfg/diy-part3.sh" ]; then
-              log "执行 DIY 脚本 3"
+              # log "执行 DIY 脚本 3"
               chmod +x "$WORKSPACE_DIR/config/$cfg/diy-part3.sh"
               cd "$BUILD_DIR" && "$WORKSPACE_DIR/config/$cfg/diy-part3.sh"
               cd "$BUILD_DIR" 
             fi
             # 更新OpenWrt软件源
-            log "更新OpenWrt软件源"
+            # log "更新OpenWrt软件源"
             eval "cd $BUILD_DIR && ./scripts/feeds update -a $REDIRECT"
             eval "cd $BUILD_DIR && ./scripts/feeds install -a $REDIRECT"
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
             fi
             # 复制 .config 文件
-            log "导入 配置文件 文件"
+            # log "导入 配置文件 文件"
             CONFIG_PATH="$WORKSPACE_DIR/config/$cfg/$CONFIG_FILE"
             if [ -f "$CONFIG_PATH" ]; then
               sudo cp -f "$CONFIG_PATH" .config
@@ -249,7 +249,7 @@ jobs:
             # 复制 hello-openwrt 包
             CUSTOM_PKG_PATH="$WORKSPACE_DIR/config/$cfg/$CUSTOM_PKG_DIR"
             if [ -d "$CUSTOM_PKG_PATH" ]; then
-              log "复制自定义包目录：$CUSTOM_PKG_DIR"
+              # log "复制自定义包目录：$CUSTOM_PKG_DIR"
               cp -rf "$CUSTOM_PKG_PATH" package/
               sudo chown -R $(id -u):$(id -g) package/
             else 
@@ -265,7 +265,7 @@ jobs:
             fi
             
             # defconfig 与 依赖下载
-            log "Defconfig 与依赖下载"
+            # log "Defconfig 与依赖下载"
             eval "make defconfig $REDIRECT"
             eval "make download -j$(nproc) $REDIRECT|| make download -j1 $REDIRECT|| make download -j8 $REDIRECT"
             eval "find dl -size -1024c -exec ls -l {} \; $REDIRECT"
@@ -275,7 +275,7 @@ jobs:
             fi
             # DIY 脚本 2
             if [ -f "$WORKSPACE_DIR/diy-part2.sh" ]; then
-              log "执行 DIY 脚本 2"
+              # log "执行 DIY 脚本 2"
               chmod +x "$WORKSPACE_DIR/diy-part2.sh"
               cd "$BUILD_DIR" && "$WORKSPACE_DIR/diy-part2.sh"
               cd "$BUILD_DIR" 
@@ -301,7 +301,7 @@ jobs:
                 done
             # DIY 脚本 4
             if [ -f "$WORKSPACE_DIR/config/$cfg/diy-part4.sh" ]; then
-              log "执行 DIY 脚本 4"
+              # log "执行 DIY 脚本 4"
               chmod +x "$WORKSPACE_DIR/config/$cfg/diy-part4.sh"
               cd "$BUILD_DIR" && "$WORKSPACE_DIR/config/$cfg/diy-part4.sh"
               cd "$BUILD_DIR" 
@@ -313,11 +313,12 @@ jobs:
             rm -rf bin/targets/*
             
             log "$cfg 构建结束"
+            log ""
             # 返回工作目录
             cd $WORKSPACE_DIR
             
           done
-          
+          log ""
           log "所有目标构建结束"
           
       - name: 发布固件到 GitHub Release        # 第五步：将生成的固件上传到 Release
