@@ -9,8 +9,7 @@ define Build/Prepare\n\
 endef\n' package/utils/busybox/Makefile
 
 # 修改 openwrt_release 显示信息 package/base-files/files/etc/openwrt_release
-sed -i 's|^DISTRIB_DESCRIPTION=.*|DISTRIB_DESCRIPTION="OpenWRT"|' package/base-files/files/etc/openwrt_release
-
+sed -i "s|^DISTRIB_DESCRIPTION=['\"].*['\"]$|DISTRIB_DESCRIPTION='OpenWRT'|" package/base-files/files/etc/openwrt_release
 
 # 修改 footer.ut 尾部信息 feeds/luci/themes/luci-theme-bootstrap/ucode/template/themes/bootstrap/footer.ut
 file="feeds/luci/themes/luci-theme-bootstrap/ucode/template/themes/bootstrap/footer.ut"
