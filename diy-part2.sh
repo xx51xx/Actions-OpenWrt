@@ -12,7 +12,6 @@ done
 
 # 修改 footer.ut 尾部信息
 find . -type f -name 'footer.ut' | while read -r file; do
-    echo "处理文件: $file"
 
     awk '
     BEGIN { in_block = 0 }
