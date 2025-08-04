@@ -1,18 +1,5 @@
 ﻿#!/bin/sh
 
-# 设置时间
-#  uci -q batch <<-EOF
-# 	set system.@system[0].timezone='CST-8'
-# 	set system.@system[0].zonename='Asia/Shanghai'
-
-# 	delete system.ntp.server
-# 	add_list system.ntp.server='ntp1.aliyun.com'
-# 	add_list system.ntp.server='ntp.tencent.com'
-# 	add_list system.ntp.server='ntp.ntsc.ac.cn'
-# 	add_list system.ntp.server='time.apple.com'
-# EOF
-# uci commit system
-
 # 扩容磁盘
 /root/soft/set_disk.sh
 
@@ -39,6 +26,7 @@ chmod -R 0644 /etc/config
 
 # 设置系统名
 uci set system.@system[0].hostname='OpenWRT'
+sed -i "s/^DISTRIB_DESCRIPTION='LEDE'/DISTRIB_DESCRIPTION='OpenWRT '/" /etc/openwrt_release
 
 # 修改默认主题
 # sed -i "s|option mediaurlbase '/luci-static/bootstrap'|option mediaurlbase '/luci-static/bootstrap-light'|g" /etc/config/luci
