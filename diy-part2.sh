@@ -1,10 +1,12 @@
 #!/bin/bash
 
 # 修改 BusyBox Shell 启动信息
-find . -type f -name 'messages.c' | while read -r file; do
-  echo "已查到文件:$file"
-  sed -i 's|const char bb_banner\[\].*=[^;]*;|const char bb_banner[] ALIGN1 = "Welcome to OpenWRT";|' "$file"
-done
+sed -i '/^define Build\/Compile/i\
+define Build/Prepare\n\
+\t$(call Build/Prepare/Default)\n\
+\t# 修改 BusyBox 的欢迎信息\n\
+\t$(SED) '\''s|const char bb_banner\\[\\].*=[^;]*;|const char bb_banner[] ALIGN1 = "Welcome to OpenWRT";|'\'' $(PKG_BUILD_DIR)/libbb/messages.c\n\
+endef\n' package/utils/busybox/Makefile
 
 # 修改 openwrt_release 显示信息 package/base-files/files/etc/openwrt_release
 sed -i 's|^DISTRIB_DESCRIPTION=.*|DISTRIB_DESCRIPTION="OpenWRT"|' package/base-files/files/etc/openwrt_release
@@ -59,8 +61,8 @@ BEGIN { in_block = 0 }
 
 
 
-# 修改 sysauth.htm 显示版权 feeds/luci/themes/luci-theme-bootstrap/ucode/template/themes/bootstrap/sysauth.htm
-sed -i -E "s/(blank_page:)[[:space:]]*true/\1 false/g" feeds/luci/themes/luci-theme-bootstrap/ucode/template/themes/bootstrap/sysauth.htm
+# 修改 sysauth.htm 显示版权 feeds/luci/themes/luci-theme-bootstrap/ucode/template/themes/bootstrap/sysauth.ut
+sed -i -E "s/(blank_page:)[[:space:]]*true/\1 false/g" feeds/luci/themes/luci-theme-bootstrap/ucode/template/themes/bootstrap/sysauth.ut
 
 
 
