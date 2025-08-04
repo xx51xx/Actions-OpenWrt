@@ -18,7 +18,7 @@ jobs:
       LOG_SILENT: true                                                    # 是否静默日志输出：true 输出日志，false 静默
       
       TIMEZONE: Asia/Shanghai                                             # 时区设置，用于 date/timedatectl
-      BUILD_DIR: /                          # 源码与构建输出目录
+      BUILD_DIR: ${{ github.workspace }}/openwrt                          # 源码与构建输出目录
       OUTPUT_DIR: ${{ github.workspace }}/img                             # 最终固件存放目录
       WORKSPACE_DIR: ${{ github.workspace }}                              # GitHub 工作区根目录
       FORCE_UNSAFE_CONFIGURE: 1                                           # 环境变量以允许 root     
@@ -39,33 +39,27 @@ jobs:
             current_time=$(date '+%F %T')
             echo "[$current_time] $*"
           }
-
           # 环境变量以允许 root
           echo "FORCE_UNSAFE_CONFIGURE=1" >> "$GITHUB_ENV"   
           export FORCE_UNSAFE_CONFIGURE=1
-
           # 根据 LOG_SILENT 控制是否重定向输出
           if [ "$LOG_SILENT" = true ]; then        
             REDIRECT="> /dev/null 2>&1"
           else
             REDIRECT=""
           fi
-
           
           log "清理不必要的软件包节省空间" 
           
           # 清理 Docker 镜像
           eval "sudo docker image prune -af $REDIRECT"  
-
           # 删除系统冗余目录
           eval "sudo rm -rf /etc/apt/sources.list.d/* \
             /usr/share/dotnet \
             /usr/local/lib/android \
             /opt/ghc \
             /opt/hostedtoolcache/CodeQL $REDIRECT"
-
           log "安装编译依赖包"  
-
           # 更新 apt 索引
           eval "sudo -E apt-get -qq update $REDIRECT" 
           # 安装编译所需工具
@@ -80,26 +74,21 @@ jobs:
           eval "sudo -E apt-get -qq autoremove --purge $REDIRECT"  
           # 清理 apt 缓存
           eval "sudo apt-get -qq clean $REDIRECT"                
-
           # 设置时区
           if [ -n "$TIMEZONE" ]; then             
             sudo timedatectl set-timezone "$TIMEZONE"
           else
             log "TIMEZONE 未设置，跳过设置时区"
           fi
-
           # 设置主机名
           sudo hostname OpenWrt                 
           sudo hostnamectl set-hostname OpenWrt
-
           log "挂载 LVM 磁盘用于构建"
-
           # 开始挂载磁盘
           mnt_size=$(( $(df -h /mnt | tail -1 | awk '{print $4}' | sed 's/[^0-9]//g') - 1 ))
           root_size=$(( $(df -h / | tail -1 | awk '{print $4}' | sed 's/[^0-9]//g') - 4 ))
           eval "sudo truncate -s \"${mnt_size}G\" /mnt/mnt.img $REDIRECT"
           eval "sudo truncate -s \"${root_size}G\" /root.img $REDIRECT"
-
           eval "sudo losetup /dev/loop6 /mnt/mnt.img $REDIRECT"
           eval "sudo losetup /dev/loop7 /root.img $REDIRECT"
           eval "sudo pvcreate /dev/loop6 $REDIRECT"
@@ -107,34 +96,29 @@ jobs:
           eval "sudo vgcreate github /dev/loop6 /dev/loop7 $REDIRECT"
           eval "sudo lvcreate -n runner -l 100%FREE github $REDIRECT"
           eval "sudo mkfs.xfs /dev/github/runner $REDIRECT"
-
           # 准备 /builder 目录并挂载
           if [ ! -d "/builder" ]; then
             sudo mkdir -p /builder
           fi
           sudo chown -R $(id -u):$(id -g) /builder
           eval "sudo mount /dev/github/runner /builder $REDIRECT"
-
           # 准备 /builder/workdir 目录并挂载
           if [ ! -d "/builder/workdir" ]; then
             sudo mkdir -p /builder/workdir
           fi
           sudo chown -R $(id -u):$(id -g) /builder/workdir
-
           # # 删除旧 $BUILD_DIR
           # if [ -d "$BUILD_DIR" ]; then
           #   sudo rm -rf $BUILD_DIR
           # fi
           
           # 创建软链接到 builder
-          # sudo ln -s /builder/workdir $BUILD_DIR
-
+          sudo ln -s /builder/workdir $BUILD_DIR
           # 创建输出目录
           if [ ! -d "$OUTPUT_DIR" ]; then
             sudo mkdir -p "$OUTPUT_DIR"
             sudo chown -R $(id -u):$(id -g) "$OUTPUT_DIR"
           fi
-
           # 创建 OpenWrt 缓存目录
           if [ ! -d "/workdir/" ]; then
             sudo mkdir -p /workdir/
@@ -160,14 +144,11 @@ jobs:
           sudo ln -s /workdir/tmp "$BUILD_DIR/tmp"
           sudo ln -s /workdir/staging_dir "$BUILD_DIR/staging_dir"
           sudo ln -s /workdir/dl-cache "$BUILD_DIR/dl"
-
           log "挂载 LVM 磁盘完成"
-
           # 生成时间戳
           ts=$(date +'%Y%m%d%H%M%S')
           # 设置 release_tag 环境变量
           echo "release_tag=OpenWRT_Build_$ts" >> "$GITHUB_ENV"  
-
       # 第三步：克隆官方源码
       - name: 克隆 OpenWrt 源码                
         run: |
@@ -177,15 +158,12 @@ jobs:
             current_time=$(date '+%F %T')
             echo "[$current_time] $*"
           }
-
           log "开始克隆 OpenWrt 源码"
-
           if [ "$LOG_SILENT" = true ]; then
             REDIRECT="> /dev/null 2>&1"
           else
             REDIRECT=""
           fi
-
           # 临时源码目录
           TEMP_DIR="$WORKSPACE_DIR/tmp_source" 
           if [ ! -d "$TEMP_DIR" ]; then
@@ -193,19 +171,17 @@ jobs:
             sudo chown -R $(id -u):$(id -g) "$TEMP_DIR"
           fi
           rm -rf "$TEMP_DIR"/*
-
           # 克隆源代码
           eval "git clone --depth 1 --branch $REPO_BRANCH $REPO_URL $TEMP_DIR $REDIRECT"
           
           shopt -s dotglob
           # 移动 临时源码目录
-          sudo mv -f "$TEMP_DIR"/* "$BUILD_DIR"/
+          mv -f "$TEMP_DIR"/* "$BUILD_DIR"/
           shopt -u dotglob
           # 删除 临时源码目录
           rm -rf "$TEMP_DIR"
           
           log "克隆 OpenWrt 源码完成"
-
       # 第四步：按 config 子目录循环构建
       - name: 按配置构建固件                  
         run: |
@@ -215,22 +191,21 @@ jobs:
             current_time=$(date '+%F %T')
             echo "[$current_time] $*"
           }
-
+          
           if [ "$LOG_SILENT" = true ]; then
             REDIRECT="> /dev/null 2>&1"
           else
             REDIRECT=""
           fi
-
+          
           # 扫描 config 子目录生成 JSON 列表
           CONFIG_LIST=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | jq -R . | jq -s .)
-
           # 默认在工作目录
           cd $WORKSPACE_DIR
           
           for cfg in $(echo "$CONFIG_LIST" | jq -r '.[]'); do
             log "开始构建配置:$cfg"
-          
+            
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
             fi
@@ -242,7 +217,6 @@ jobs:
               cd "$BUILD_DIR" && "$WORKSPACE_DIR/diy-part1.sh"
               cd "$BUILD_DIR" 
             fi
-
             # DIY 脚本 3
             if [ -f "$WORKSPACE_DIR/config/$cfg/diy-part3.sh" ]; then
               log "执行 DIY 脚本 3"
@@ -250,16 +224,13 @@ jobs:
               cd "$BUILD_DIR" && "$WORKSPACE_DIR/config/$cfg/diy-part3.sh"
               cd "$BUILD_DIR" 
             fi
-
             # 更新OpenWrt软件源
             log "更新OpenWrt软件源"
-            eval "cd $BUILD_DIR && sudo ./scripts/feeds update -a $REDIRECT"
-            eval "cd $BUILD_DIR && sudo ./scripts/feeds install -a $REDIRECT"
-
+            eval "cd $BUILD_DIR && ./scripts/feeds update -a $REDIRECT"
+            eval "cd $BUILD_DIR && ./scripts/feeds install -a $REDIRECT"
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
             fi
-
             # 复制 .config 文件
             log "导入 配置文件 文件"
             CONFIG_PATH="$WORKSPACE_DIR/config/$cfg/$CONFIG_FILE"
@@ -269,16 +240,12 @@ jobs:
             else
               echo "自定义包目录不存在：$CUSTOM_PKG_PATH"
               # log "请注意，配置文件 $CONFIG_PATH 不存在！"
-
               # 如注释 [exit 1] 生成默认配置文件执行,流程不会结束
               exit 1
-
             fi
-
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
             fi
-
             # 复制 hello-openwrt 包
             CUSTOM_PKG_PATH="$WORKSPACE_DIR/config/$cfg/$CUSTOM_PKG_DIR"
             if [ -d "$CUSTOM_PKG_PATH" ]; then
@@ -293,22 +260,19 @@ jobs:
               # exit 1
               
             fi
-
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
             fi
             
             # defconfig 与 依赖下载
             log "Defconfig 与依赖下载"
-            eval "sudo make defconfig $REDIRECT"
-            eval "sudo make download -j$(nproc) $REDIRECT|| make download -j1 $REDIRECT|| make download -j8 $REDIRECT"
-            # eval "find dl -size -1024c -exec ls -l {} \; $REDIRECT"
-            # eval "find dl -size -1024c -exec rm -f {} \; $REDIRECT"
-
+            eval "make defconfig $REDIRECT"
+            eval "make download -j$(nproc) $REDIRECT|| make download -j1 $REDIRECT|| make download -j8 $REDIRECT"
+            eval "find dl -size -1024c -exec ls -l {} \; $REDIRECT"
+            eval "find dl -size -1024c -exec rm -f {} \; $REDIRECT"
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
             fi
-
             # DIY 脚本 2
             if [ -f "$WORKSPACE_DIR/diy-part2.sh" ]; then
               log "执行 DIY 脚本 2"
@@ -316,13 +280,11 @@ jobs:
               cd "$BUILD_DIR" && "$WORKSPACE_DIR/diy-part2.sh"
               cd "$BUILD_DIR" 
             fi
-
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
             fi
-
             log "开始编译 $cfg"
-            eval "sudo make -j$(nproc) V=s $REDIRECT || make -j1 V=s $REDIRECT || make -j1 $REDIRECT"
+            eval "make -j$(nproc) V=s $REDIRECT || make -j1 V=s $REDIRECT || make -j1 $REDIRECT"
             log "$cfg 编译完成"
             
             if [ ! -d "$BUILD_DIR" ]; then
@@ -337,7 +299,6 @@ jobs:
                   cp "$img" "$OUTPUT_DIR/${cfg}_$base"
                   log "输出固件：${cfg}_$base"
                 done
-
             # DIY 脚本 4
             if [ -f "$WORKSPACE_DIR/config/$cfg/diy-part4.sh" ]; then
               log "执行 DIY 脚本 4"
@@ -345,20 +306,20 @@ jobs:
               cd "$BUILD_DIR" && "$WORKSPACE_DIR/config/$cfg/diy-part4.sh"
               cd "$BUILD_DIR" 
             fi
-
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
             fi
-
-            sudo rm -f .config
-            sudo rm -rf bin/targets/*
+            rm -f .config
+            rm -rf bin/targets/*
             
             log "$cfg 构建结束"
             # 返回工作目录
             cd $WORKSPACE_DIR
             
           done
-
+          
+          log "所有目标构建结束"
+          
       - name: 发布固件到 GitHub Release        # 第五步：将生成的固件上传到 Release
         uses: softprops/action-gh-release@v2
         with:
