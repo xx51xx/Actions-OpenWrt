@@ -24,7 +24,7 @@ find . -type f -name 'footer.ut' | while read -r file; do
             print "    </div>"
             print "    <footer>"
             print "        <span>"
-            print "            &copy; ${new Date().getFullYear()} 两笙山世 私人定制版  |  联系邮箱: live2@qq.com"
+            print "            &copy; ${new Date().getFullYear()} 两笙山世 OpenWRT私人定制版  |  联系邮箱: live2@qq.com"
             print "        </span>"
             print "    </footer>"
             print "    <script>"
