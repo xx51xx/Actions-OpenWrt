@@ -1,0 +1,12 @@
+﻿# 读写权限
+mount -o remount rw /
+# 重启AT模块
+echo -e "AT+CFUN=1,1\r" > /dev/ttyUSB2
+# 设置tmp缓存空间为32M
+mount -o remount,size=32M tmpfs /tmp
+# 禁用ICMP
+echo 1 > /proc/sys/net/ipv4/icmp_echo_ignore_all
+echo 1 > /proc/sys/net/ipv6/icmp/echo_ignore_all
+# 30分钟后，关闭SSH 和 HTTP 及tyyd
+# (sleep 1800 && /etc/init.d/dropbear stop && /etc/init.d/uhttpd stop && /etc/init.d/ttyd stop) &
+exit 0
