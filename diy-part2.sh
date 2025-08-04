@@ -12,20 +12,34 @@ done
 
 # 修改 footer.ut 尾部信息
 find . -type f -name 'footer.ut' | while read -r file; do
-    # 使用 awk 替换原始 footer 片段为 JS 动态年份版本
+    echo "处理文件: $file"
+
     awk '
     BEGIN { in_block = 0 }
+
     {
         if ($0 ~ /{% if \(!blank_page\): %}/) {
             in_block = 1
             print "{% if (!blank_page): %}"
-            print "</div>"
-            print "<footer>"
-            print "    <span>"
-            print "        &copy; ${new Date().getFullYear()} 两笙山世 私人定制版  |  联系邮箱: live2@qq.com"
-            print "    </span>"
-            print "</footer>"
-            print "<script>L.require('\''menu-bootstrap'\'')</script>"
+            print "    </div>"
+            print "    <footer>"
+            print "        <span>"
+            print "            &copy; ${new Date().getFullYear()} 两笙山世 私人定制版  |  联系邮箱: live2@qq.com"
+            print "        </span>"
+            print "    </footer>"
+            print "    <script>"
+            print "    L.require(\"menu-bootstrap\");"
+            print ""
+            print "    (function () {"
+            print "        var loginBtn = document.querySelector(\"button.btn.cbi-button-positive.important\");"
+            print "        if (loginBtn) {"
+            print "            const p = document.createElement(\"p\");"
+            print "            p.style.cssText = \"text-align:center;padding:10px;color:#888;font-size:14px;\";"
+            print "            p.textContent = \"本站仅用于个人学习与作品集展示，不提供对外服务，感谢您的访问。\";"
+            print "            document.querySelector(\"footer\")?.appendChild(p);"
+            print "        }"
+            print "    })();"
+            print "    </script>"
             print "{% endif %}"
             next
         }
@@ -40,6 +54,12 @@ find . -type f -name 'footer.ut' | while read -r file; do
         if (!in_block)
             print $0
     }' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+done
+
+# 修改 sysauth.htm 显示版权
+find . -type f -name 'sysauth.htm' | while read -r file; do
+    # 使用 sed 替换 blank_page: true -> false
+    sed -i "s/{% include('footer', { *blank_page: *true *}) %}/{% include('footer', { blank_page: false }) %}/g" "$file"
 done
 
 exit 0
