@@ -49,7 +49,7 @@ jobs:
             REDIRECT=""
           fi
           
-          log "清理不必要的软件包节省空间" 
+          log "正在 清理不必要的软件包节省空间" 
           
           # 清理 Docker 镜像
           eval "sudo docker image prune -af $REDIRECT"  
@@ -59,7 +59,9 @@ jobs:
             /usr/local/lib/android \
             /opt/ghc \
             /opt/hostedtoolcache/CodeQL $REDIRECT"
-          log "安装编译依赖包"  
+            
+          log "正在 安装编译依赖包"  
+          
           # 更新 apt 索引
           eval "sudo -E apt-get -qq update $REDIRECT" 
           # 安装编译所需工具
@@ -83,7 +85,8 @@ jobs:
           # 设置主机名
           sudo hostname OpenWrt                 
           sudo hostnamectl set-hostname OpenWrt
-          log "挂载 LVM 磁盘用于构建"
+          
+          log "正在 挂载 LVM 磁盘,扩展空间"
           # 开始挂载磁盘
           mnt_size=$(( $(df -h /mnt | tail -1 | awk '{print $4}' | sed 's/[^0-9]//g') - 1 ))
           root_size=$(( $(df -h / | tail -1 | awk '{print $4}' | sed 's/[^0-9]//g') - 4 ))
@@ -144,7 +147,7 @@ jobs:
           sudo ln -s /workdir/tmp "$BUILD_DIR/tmp"
           sudo ln -s /workdir/staging_dir "$BUILD_DIR/staging_dir"
           sudo ln -s /workdir/dl-cache "$BUILD_DIR/dl"
-          log "挂载 LVM 磁盘完成"
+          
           # 生成时间戳
           ts=$(date +'%Y%m%d%H%M%S')
           # 设置 release_tag 环境变量
@@ -158,7 +161,7 @@ jobs:
             current_time=$(date '+%F %T')
             echo "[$current_time] $*"
           }
-          log "开始克隆 OpenWrt 源码"
+          log "正在 克隆 OpenWrt 源码"
           if [ "$LOG_SILENT" = true ]; then
             REDIRECT="> /dev/null 2>&1"
           else
@@ -181,7 +184,6 @@ jobs:
           # 删除 临时源码目录
           rm -rf "$TEMP_DIR"
           
-          log "克隆 OpenWrt 源码完成"
       # 第四步：按 config 子目录循环构建
       - name: 按配置构建固件                  
         run: |
@@ -204,7 +206,7 @@ jobs:
           cd $WORKSPACE_DIR
           
           for cfg in $(echo "$CONFIG_LIST" | jq -r '.[]'); do
-            log "开始构建配置:$cfg"
+            log "正在构建:$cfg"
             
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
