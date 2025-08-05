@@ -273,6 +273,7 @@ jobs:
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
             fi
+            cat package/base-files/files/etc/openwrt_release
             # DIY 脚本 2
             if [ -f "$WORKSPACE_DIR/diy-part2.sh" ]; then
               # log "执行 DIY 脚本 2"
@@ -280,6 +281,7 @@ jobs:
               cd "$BUILD_DIR" && "$WORKSPACE_DIR/diy-part2.sh"
               cd "$BUILD_DIR" 
             fi
+            cat package/base-files/files/etc/openwrt_release
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
             fi
