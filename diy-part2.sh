@@ -5,7 +5,7 @@ sed -i '/^define Build\/Compile/i\
 define Build/Prepare\n\
 \t$(call Build/Prepare/Default)\n\
 \t# 修改 BusyBox 的欢迎信息\n\
-\t$(SED) '\''s|const char bb_banner\\[\\].*=[^;]*;|const char bb_banner[] ALIGN1 = "Welcome to OpenWRT |";|'\'' $(PKG_BUILD_DIR)/libbb/messages.c\n\
+\t$(SED) '\''s|const char bb_banner\\[\\].*=[^;]*;|const char bb_banner[] ALIGN1 = "Welcome to OpenWRT";|'\'' $(PKG_BUILD_DIR)/libbb/messages.c\n\
 endef\n' package/utils/busybox/Makefile
 
 # 修改 openwrt_release 显示信息 package/base-files/files/etc/openwrt_release
