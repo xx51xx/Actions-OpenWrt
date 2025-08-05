@@ -12,20 +12,34 @@ endef\n' package/utils/busybox/Makefile
 sed -i "s|^DISTRIB_DESCRIPTION='%D %V %C'|DISTRIB_DESCRIPTION='OpenWRT'|" package/base-files/files/etc/openwrt_release
 
 file="feeds/luci/themes/luci-theme-bootstrap/ucode/template/themes/bootstrap/footer.ut"
-sed -i '/{% if (!blank_page): %}/,/{% endif %}/c\
-{% if (!blank_page): %}\
-</div>\
-<footer>\
-  <span>\
-    &copy; <span id="year"></span> 两笙山世 私人定制版OpenWRT  |  联系邮箱: live2@qq.com\
-  </span>\
-  <ul class="breadcrumb pull-right" id="modemenu" style="display:none"></ul>\
-</footer>\
-<script>\
-  L.require('\''menu-bootstrap'\'');\
-  document.getElementById("year").textContent = new Date().getFullYear();\
-</script>\
-{% endif %}' "$file"
+cat > "$file" <<'EOF'
+{% if (!blank_page): %}
+</div>
+<footer>
+  <span>
+    Powered by
+    <a href="https://github.com/openwrt/luci" target="_blank" rel="noreferrer">
+      {{ version.luciname }} ({{ version.luciversion }})
+    </a>
+    /
+    <a href="{{ entityencode(version.disturl ?? '#', true) }}" target="_blank" rel="noreferrer">
+      {{ version.distname }} {{ version.distversion }} ({{ version.distrevision }})
+    </a>
+    {% if (lua_active): %}
+      / {{ _('Lua compatibility mode active') }}
+    {% endif %}
+    <br>
+    &copy; <span id="year"></span> 两笙山世 私人定制版 OpenWRT | 联系邮箱: live2@qq.com
+  </span>
+  <ul class="breadcrumb pull-right" id="modemenu" style="display:none"></ul>
+</footer>
+<script>
+  L.require('menu-bootstrap');
+  document.getElementById("year").textContent = new Date().getFullYear();
+</script>
+{% endif %}
+EOF
+
 
 
 # 修改 sysauth.htm 显示版权 feeds/luci/themes/luci-theme-bootstrap/ucode/template/themes/bootstrap/sysauth.ut
