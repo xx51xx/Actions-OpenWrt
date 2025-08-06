@@ -39,6 +39,7 @@ jobs:
             current_time=$(date '+%F %T')
             echo "[$current_time] $*"
           }
+          
           # 环境变量以允许 root
           echo "FORCE_UNSAFE_CONFIGURE=1" >> "$GITHUB_ENV"   
           export FORCE_UNSAFE_CONFIGURE=1
@@ -72,16 +73,20 @@ jobs:
           libreadline-dev libssl-dev libtool llvm lrzsz msmtp ninja-build p7zip p7zip-full patch pkgconf \
           python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion \
           swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev $REDIRECT"
+          
           # 自动移除冗余包
           eval "sudo -E apt-get -qq autoremove --purge $REDIRECT"  
+          
           # 清理 apt 缓存
-          eval "sudo apt-get -qq clean $REDIRECT"                
+          eval "sudo apt-get -qq clean $REDIRECT"    
+          
           # 设置时区
           if [ -n "$TIMEZONE" ]; then             
             sudo timedatectl set-timezone "$TIMEZONE"
           else
             log "TIMEZONE 未设置，跳过设置时区"
           fi
+          
           # 设置主机名
           sudo hostname OpenWrt                 
           sudo hostnamectl set-hostname OpenWrt
@@ -99,6 +104,7 @@ jobs:
           eval "sudo vgcreate github /dev/loop6 /dev/loop7 $REDIRECT"
           eval "sudo lvcreate -n runner -l 100%FREE github $REDIRECT"
           eval "sudo mkfs.xfs /dev/github/runner $REDIRECT"
+          
           # 准备 /builder 目录并挂载
           if [ ! -d "/builder" ]; then
             sudo mkdir -p /builder
@@ -110,6 +116,7 @@ jobs:
             sudo mkdir -p /builder/workdir
           fi
           sudo chown -R $(id -u):$(id -g) /builder/workdir
+          
           # # 删除旧 $BUILD_DIR
           # if [ -d "$BUILD_DIR" ]; then
           #   sudo rm -rf $BUILD_DIR
@@ -117,11 +124,13 @@ jobs:
           
           # 创建软链接到 builder
           sudo ln -s /builder/workdir $BUILD_DIR
+          
           # 创建输出目录
           if [ ! -d "$OUTPUT_DIR" ]; then
             sudo mkdir -p "$OUTPUT_DIR"
             sudo chown -R $(id -u):$(id -g) "$OUTPUT_DIR"
           fi
+          
           # 创建 OpenWrt 缓存目录
           if [ ! -d "/workdir/" ]; then
             sudo mkdir -p /workdir/
@@ -152,6 +161,7 @@ jobs:
           ts=$(date +'%Y%m%d%H%M%S')
           # 设置 release_tag 环境变量
           echo "release_tag=OpenWRT_Build_$ts" >> "$GITHUB_ENV"  
+          
       # 第三步：克隆官方源码
       - name: 克隆 OpenWrt 源码                
         run: |
@@ -161,7 +171,9 @@ jobs:
             current_time=$(date '+%F %T')
             echo "[$current_time] $*"
           }
+          
           log "正在 克隆 OpenWrt 源码"
+          
           if [ "$LOG_SILENT" = true ]; then
             REDIRECT="> /dev/null 2>&1"
           else
@@ -173,7 +185,9 @@ jobs:
             mkdir -p "$TEMP_DIR"
             sudo chown -R $(id -u):$(id -g) "$TEMP_DIR"
           fi
+          
           rm -rf "$TEMP_DIR"/*
+          
           # 克隆源代码
           eval "git clone --depth 1 --branch $REPO_BRANCH $REPO_URL $TEMP_DIR $REDIRECT"
           
@@ -202,10 +216,12 @@ jobs:
           
           # 扫描 config 子目录生成 JSON 列表
           CONFIG_LIST=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | jq -R . | jq -s .)
-          # 默认在工作目录
+          
+          # 进入 默认工作目录
           cd $WORKSPACE_DIR
           
           for cfg in $(echo "$CONFIG_LIST" | jq -r '.[]'); do
+          
             log "正在构建:$cfg"
             
             if [ ! -d "$BUILD_DIR" ]; then
@@ -219,6 +235,7 @@ jobs:
               cd "$BUILD_DIR" && "$WORKSPACE_DIR/diy-part1.sh"
               cd "$BUILD_DIR" 
             fi
+            
             # DIY 脚本 3
             if [ -f "$WORKSPACE_DIR/config/$cfg/diy-part3.sh" ]; then
               # log "执行 DIY 脚本 3"
@@ -226,6 +243,7 @@ jobs:
               cd "$BUILD_DIR" && "$WORKSPACE_DIR/config/$cfg/diy-part3.sh"
               cd "$BUILD_DIR" 
             fi
+            
             # 更新OpenWrt软件源
             # log "更新OpenWrt软件源"
             eval "cd $BUILD_DIR && ./scripts/feeds update -a $REDIRECT"
@@ -233,6 +251,7 @@ jobs:
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
             fi
+            
             # 复制 .config 文件
             # log "导入 配置文件 文件"
             CONFIG_PATH="$WORKSPACE_DIR/config/$cfg/$CONFIG_FILE"
@@ -240,14 +259,16 @@ jobs:
               sudo cp -f "$CONFIG_PATH" .config
               sudo chown $(id -u):$(id -g) .config
             else
-              echo "自定义包目录不存在：$CUSTOM_PKG_PATH"
+              log "自定义包目录不存在：$CUSTOM_PKG_PATH"
               # log "请注意，配置文件 $CONFIG_PATH 不存在！"
               # 如注释 [exit 1] 生成默认配置文件执行,流程不会结束
               exit 1
             fi
+            
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
             fi
+            
             # 复制 hello-openwrt 包
             CUSTOM_PKG_PATH="$WORKSPACE_DIR/config/$cfg/$CUSTOM_PKG_DIR"
             if [ -d "$CUSTOM_PKG_PATH" ]; then
@@ -260,7 +281,7 @@ jobs:
               
               # 如注释 [exit 1] 默认继续执行,流程不会结束
               # exit 1
-              
+          
             fi
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
@@ -275,6 +296,7 @@ jobs:
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
             fi
+            
             # DIY 脚本 2
             if [ -f "$WORKSPACE_DIR/diy-part2.sh" ]; then
               # log "执行 DIY 脚本 2"
@@ -282,11 +304,11 @@ jobs:
               cd "$BUILD_DIR" && "$WORKSPACE_DIR/diy-part2.sh"
               cd "$BUILD_DIR" 
             fi
-            cat feeds/luci/themes/luci-theme-bootstrap/ucode/template/themes/bootstrap/footer.ut
-            cat feeds/luci/themes/luci-theme-bootstrap/ucode/template/themes/bootstrap/sysauth.ut
+            
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
             fi
+            
             # log "开始编译 $cfg"
             eval "make -j$(nproc) V=s $REDIRECT || make -j1 V=s $REDIRECT || make -j1 $REDIRECT"
             # log "$cfg 编译完成"
@@ -303,6 +325,7 @@ jobs:
                   cp "$img" "$OUTPUT_DIR/${cfg}_$base"
                   log "输出固件：${cfg}_$base"
                 done
+                
             # DIY 脚本 4
             if [ -f "$WORKSPACE_DIR/config/$cfg/diy-part4.sh" ]; then
               # log "执行 DIY 脚本 4"
@@ -310,9 +333,11 @@ jobs:
               cd "$BUILD_DIR" && "$WORKSPACE_DIR/config/$cfg/diy-part4.sh"
               cd "$BUILD_DIR" 
             fi
+            
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
             fi
+            
             rm -f .config
             rm -rf bin/targets/*
             
