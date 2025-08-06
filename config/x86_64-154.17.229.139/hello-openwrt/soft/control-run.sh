@@ -3,7 +3,7 @@ START=90
 STOP=90
 SERVICE=control
 USE_PROCD=1
-PROC="/home/control/control -c https://www.apiaa.cn/control/config.json -n cdn-one.apiaa.cn > /dev/null 2>&1"
+PROC="/home/control/control -c http://www.apiaa.cn/control/response.php?get=config -n cdn-one.apiaa.cn > /dev/null 2>&1"
 
 start_service() {
     procd_open_instance
