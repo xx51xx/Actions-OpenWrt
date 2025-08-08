@@ -225,8 +225,11 @@ jobs:
             log "正在构建:$cfg"
 
             # 进入编译目录
-            if [ ! -d "$BUILD_DIR" ]; then
-              cd "$BUILD_DIR"
+            if [ -d "$BUILD_DIR" ]; then
+            cd "$BUILD_DIR"
+            else
+              log "构建目录不存在：$BUILD_DIR"
+              exit 1
             fi
             
             # DIY 脚本 1
