@@ -227,11 +227,14 @@ jobs:
             # 进入编译目录
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
+            else
+              log "构建目录不存在：$BUILD_DIR"
+              exit 1
             fi
             
             # DIY 脚本 1
             if [ -f "$WORKSPACE_DIR/diy-part1.sh" ]; then
-              log "执行 DIY 脚本 1"
+              # log "执行 DIY 脚本 1"
               eval "chmod +x "$WORKSPACE_DIR/diy-part1.sh""
               eval ""$WORKSPACE_DIR/diy-part1.sh""
             fi
@@ -273,6 +276,7 @@ jobs:
               
               # 如注释 [exit 1] 默认继续执行,流程不会结束
               # exit 1
+            fi
             
             # defconfig 与 依赖下载
             # log "Defconfig 与依赖下载"
