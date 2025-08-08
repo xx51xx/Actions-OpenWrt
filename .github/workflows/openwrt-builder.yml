@@ -223,7 +223,8 @@ jobs:
           for cfg in $(echo "$CONFIG_LIST" | jq -r '.[]'); do
           
             log "正在构建:$cfg"
-            
+
+            # 进入编译目录
             if [ ! -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
             fi
@@ -232,25 +233,20 @@ jobs:
             if [ -f "$WORKSPACE_DIR/diy-part1.sh" ]; then
               # log "执行 DIY 脚本 1"
               chmod +x "$WORKSPACE_DIR/diy-part1.sh"
-              cd "$BUILD_DIR" && "$WORKSPACE_DIR/diy-part1.sh"
-              cd "$BUILD_DIR" 
+              "$WORKSPACE_DIR/diy-part1.sh"
             fi
             
             # DIY 脚本 3
             if [ -f "$WORKSPACE_DIR/config/$cfg/diy-part3.sh" ]; then
               # log "执行 DIY 脚本 3"
               chmod +x "$WORKSPACE_DIR/config/$cfg/diy-part3.sh"
-              cd "$BUILD_DIR" && "$WORKSPACE_DIR/config/$cfg/diy-part3.sh"
-              cd "$BUILD_DIR" 
+              "$WORKSPACE_DIR/config/$cfg/diy-part3.sh"
             fi
             
             # 更新OpenWrt软件源
             # log "更新OpenWrt软件源"
-            eval "cd $BUILD_DIR && ./scripts/feeds update -a $REDIRECT"
-            eval "cd $BUILD_DIR && ./scripts/feeds install -a $REDIRECT"
-            if [ ! -d "$BUILD_DIR" ]; then
-              cd "$BUILD_DIR"
-            fi
+            eval "./scripts/feeds update -a $REDIRECT"
+            eval "./scripts/feeds install -a $REDIRECT"
             
             # 复制 .config 文件
             # log "导入 配置文件 文件"
@@ -265,10 +261,6 @@ jobs:
               exit 1
             fi
             
-            if [ ! -d "$BUILD_DIR" ]; then
-              cd "$BUILD_DIR"
-            fi
-            
             # 复制 hello-openwrt 包
             CUSTOM_PKG_PATH="$WORKSPACE_DIR/config/$cfg/$CUSTOM_PKG_DIR"
             if [ -d "$CUSTOM_PKG_PATH" ]; then
@@ -281,11 +273,6 @@ jobs:
               
               # 如注释 [exit 1] 默认继续执行,流程不会结束
               # exit 1
-          
-            fi
-            if [ ! -d "$BUILD_DIR" ]; then
-              cd "$BUILD_DIR"
-            fi
             
             # defconfig 与 依赖下载
             # log "Defconfig 与依赖下载"
@@ -301,21 +288,12 @@ jobs:
             if [ -f "$WORKSPACE_DIR/diy-part2.sh" ]; then
               # log "执行 DIY 脚本 2"
               chmod +x "$WORKSPACE_DIR/diy-part2.sh"
-              cd "$BUILD_DIR" && "$WORKSPACE_DIR/diy-part2.sh"
-              cd "$BUILD_DIR" 
-            fi
-            
-            if [ ! -d "$BUILD_DIR" ]; then
-              cd "$BUILD_DIR"
+              "$WORKSPACE_DIR/diy-part2.sh"
             fi
             
             # log "开始编译 $cfg"
             eval "make -j$(nproc) V=s $REDIRECT || make -j1 V=s $REDIRECT || make -j1 $REDIRECT"
             # log "$cfg 编译完成"
-            
-            if [ ! -d "$BUILD_DIR" ]; then
-              cd "$BUILD_DIR"
-            fi
           
             # 收集固件文件并输出
             find bin/targets -type f \( -name '*.img.gz' -o -name '*.bin' \) \
@@ -330,12 +308,7 @@ jobs:
             if [ -f "$WORKSPACE_DIR/config/$cfg/diy-part4.sh" ]; then
               # log "执行 DIY 脚本 4"
               chmod +x "$WORKSPACE_DIR/config/$cfg/diy-part4.sh"
-              cd "$BUILD_DIR" && "$WORKSPACE_DIR/config/$cfg/diy-part4.sh"
-              cd "$BUILD_DIR" 
-            fi
-            
-            if [ ! -d "$BUILD_DIR" ]; then
-              cd "$BUILD_DIR"
+              "$WORKSPACE_DIR/config/$cfg/diy-part4.sh"
             fi
             
             rm -f .config
