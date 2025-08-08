@@ -231,16 +231,16 @@ jobs:
             
             # DIY 脚本 1
             if [ -f "$WORKSPACE_DIR/diy-part1.sh" ]; then
-              # log "执行 DIY 脚本 1"
-              chmod +x "$WORKSPACE_DIR/diy-part1.sh"
-              "$WORKSPACE_DIR/diy-part1.sh"
+              log "执行 DIY 脚本 1"
+              eval "chmod +x "$WORKSPACE_DIR/diy-part1.sh""
+              eval ""$WORKSPACE_DIR/diy-part1.sh""
             fi
             
             # DIY 脚本 3
             if [ -f "$WORKSPACE_DIR/config/$cfg/diy-part3.sh" ]; then
               # log "执行 DIY 脚本 3"
-              chmod +x "$WORKSPACE_DIR/config/$cfg/diy-part3.sh"
-              "$WORKSPACE_DIR/config/$cfg/diy-part3.sh"
+              eval "chmod +x "$WORKSPACE_DIR/config/$cfg/diy-part3.sh""
+              eval ""$WORKSPACE_DIR/config/$cfg/diy-part3.sh""
             fi
             
             # 更新OpenWrt软件源
@@ -280,15 +280,12 @@ jobs:
             eval "make download -j$(nproc) $REDIRECT|| make download -j1 $REDIRECT|| make download -j8 $REDIRECT"
             eval "find dl -size -1024c -exec ls -l {} \; $REDIRECT"
             eval "find dl -size -1024c -exec rm -f {} \; $REDIRECT"
-            if [ ! -d "$BUILD_DIR" ]; then
-              cd "$BUILD_DIR"
-            fi
             
             # DIY 脚本 2
             if [ -f "$WORKSPACE_DIR/diy-part2.sh" ]; then
               # log "执行 DIY 脚本 2"
-              chmod +x "$WORKSPACE_DIR/diy-part2.sh"
-              "$WORKSPACE_DIR/diy-part2.sh"
+              eval "chmod +x "$WORKSPACE_DIR/diy-part2.sh""
+              eval ""$WORKSPACE_DIR/diy-part2.sh""
             fi
             
             # log "开始编译 $cfg"
@@ -307,8 +304,8 @@ jobs:
             # DIY 脚本 4
             if [ -f "$WORKSPACE_DIR/config/$cfg/diy-part4.sh" ]; then
               # log "执行 DIY 脚本 4"
-              chmod +x "$WORKSPACE_DIR/config/$cfg/diy-part4.sh"
-              "$WORKSPACE_DIR/config/$cfg/diy-part4.sh"
+              eval "chmod +x "$WORKSPACE_DIR/config/$cfg/diy-part4.sh""
+              eval ""$WORKSPACE_DIR/config/$cfg/diy-part4.sh""
             fi
             
             rm -f .config
