@@ -233,7 +233,7 @@ jobs:
             fi
 
             # 复制配置到临时文件夹
-            cp -r "$WORKSPACE_DIR/config/$cfg/“ "$TEMP_DIR"/
+            cp -r "$WORKSPACE_DIR/config/$cfg/" "$TEMP_DIR"/
             
             # DIY 脚本 1
             if [ -f "$WORKSPACE_DIR/diy-part1.sh" ]; then
