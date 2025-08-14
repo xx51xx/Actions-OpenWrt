@@ -318,6 +318,7 @@ jobs:
             rm -f .config
             rm -rf bin/targets/*
             rm -rf "$TEMP_DIR"/*
+            
             log "$cfg 构建结束"
             log ""
             # 返回工作目录
