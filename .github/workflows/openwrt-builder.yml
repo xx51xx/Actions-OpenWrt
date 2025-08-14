@@ -324,9 +324,9 @@ jobs:
               eval ""$WORKSPACE_DIR/config/$cfg/diy-part4.sh""
             fi
             
-            rm -f .config
-            rm -rf bin/targets/*
-            rm -rf "$TEMP_DIR"/*
+            sudo rm -f .config
+            sudo rm -rf bin/targets/*
+            sudo rm -rf "$TEMP_DIR"/*
             
             log "$cfg 构建结束"
             log ""
