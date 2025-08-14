@@ -231,6 +231,9 @@ jobs:
               log "构建目录不存在：$BUILD_DIR"
               exit 1
             fi
+
+            # 复制配置到临时文件夹
+            cp -r "$WORKSPACE_DIR/config/$cfg/“ "$TEMP_DIR"/
             
             # DIY 脚本 1
             if [ -f "$WORKSPACE_DIR/diy-part1.sh" ]; then
@@ -314,7 +317,7 @@ jobs:
             
             rm -f .config
             rm -rf bin/targets/*
-            
+            rm -rf "$TEMP_DIR"/*
             log "$cfg 构建结束"
             log ""
             # 返回工作目录
