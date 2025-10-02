@@ -236,6 +236,7 @@ jobs:
 
       # 构建固件（每个矩阵变量一个 job）
       - name: 构建固件
+        timeout-minutes: 360
         run: |
           echo "正在运行 构建固件" > /dev/null 2>&1
           cfg="${{ matrix.config }}"
@@ -343,4 +344,5 @@ jobs:
           name: ${{ env.release_tag }}
           body: 自动构建上传的 OpenWrt 固件集合
           files: ${{ env.OUTPUT_DIR }}/*
+
 
