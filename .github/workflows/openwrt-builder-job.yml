@@ -250,7 +250,12 @@ jobs:
           else
             REDIRECT=""
           fi
-
+          
+          while true; do
+            sleep 1800   # 30 分钟
+            echo "[防退出心跳检测] $(date)"
+          done &
+          
           TEMP_DIR="$WORKSPACE_DIR/tmp_source"
           if [ ! -d "$TEMP_DIR" ]; then
             mkdir -p "$TEMP_DIR"
@@ -344,5 +349,6 @@ jobs:
           name: ${{ env.release_tag }}
           body: 自动构建上传的 OpenWrt 固件集合
           files: ${{ env.OUTPUT_DIR }}/*
+
 
 
