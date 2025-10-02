@@ -7,14 +7,18 @@ config interface 'loopback'
 config interface 'wan'
         option ifname 'eth0'
         option proto 'static'
-        
-        option ipaddr '154.17.229.139'
-        option gateway '154.17.229.1'
-        option netmask '255.255.255.0'
-        
-        option ip6addr '2605:52c0:1:413:e0f6:4bff:fe63:1c6f/64'
-        option ip6gw 'fe80::14a7:b9ff:fe92:b46c'
 
-        list dns '8.8.8.8'
-        list dns '1.1.1.1'
-        list dns '2001:4860:4860::8888'
+        # IPv4 静态配置
+        option ipaddr '192.168.1.4'
+        option gateway '192.168.1.1'
+        option netmask '255.255.255.0'
+
+        # IPv6 动态获取
+        option ip6assign '64'
+        option reqprefix 'auto'
+        option reqaddress 'try'
+
+        list dns '192.168.1.1'
+        list dns '223.5.5.5'
+        list dns '2400:3200::1'
+
