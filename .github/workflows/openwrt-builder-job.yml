@@ -1,0 +1,324 @@
+name: OpenWrt 并行矩阵构建发布
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate-matrix:
+    name: 生成构建矩阵
+    runs-on: ubuntu-22.04
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: 检出源码仓库
+        uses: actions/checkout@v4
+
+      # 自动扫描 config 子目录
+      - name: 生成 config 子目录列表
+        id: set-matrix
+        run: |
+          configs=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f,' | sed 's/,$//')
+          echo "matrix=[${configs}]" >> $GITHUB_OUTPUT
+
+  build:
+    name: 构建并发布 ${{ matrix.config }} 固件
+    needs: generate-matrix
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        config: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+
+    env:
+      REPO_URL: https://github.com/coolsnowwolf/lede                      # OpenWrt 源码仓库地址
+      REPO_BRANCH: master                                                 # 克隆的分支
+      CUSTOM_PKG_DIR: hello-openwrt                                       # 每个 config 子目录下的自定义包目录名
+      CONFIG_FILE: .config                                                # 每个 config 子目录下的配置文件名
+      LOG_SILENT: false                                                   # 是否静默日志输出：true 输出日志，false 静默
+      TIMEZONE: Asia/Shanghai                                             # 时区设置，用于 date/timedatectl
+      BUILD_DIR: ${{ github.workspace }}/openwrt                          # 源码与构建输出目录
+      OUTPUT_DIR: ${{ github.workspace }}/img                             # 最终固件存放目录
+      WORKSPACE_DIR: ${{ github.workspace }}                              # GitHub 工作区根目录
+      FORCE_UNSAFE_CONFIGURE: 1                                           # 环境变量以允许 root
+
+    steps:
+      - name: 检出源码仓库
+        uses: actions/checkout@v4
+
+      # 安装系统依赖和扩展磁盘
+      - name: 安装系统依赖和扩展磁盘
+
+        run: |
+          echo "正在运行 安装系统依赖和扩展磁盘" > /dev/null 2>&1
+          
+          # 定义日志函数，格式 [YYYY-MM-DD HH:MM:SS] 消息
+          log() {                                 
+            current_time=$(date '+%F %T')
+            echo "[$current_time] $*"
+          }
+          
+          # 环境变量以允许 root
+          echo "FORCE_UNSAFE_CONFIGURE=1" >> "$GITHUB_ENV"   
+          export FORCE_UNSAFE_CONFIGURE=1
+          # 根据 LOG_SILENT 控制是否重定向输出
+          if [ "$LOG_SILENT" = true ]; then        
+            REDIRECT="> /dev/null 2>&1"
+          else
+            REDIRECT=""
+          fi
+          
+          log "正在 清理不必要的软件包节省空间" 
+          
+          # 清理 Docker 镜像
+          eval "sudo docker image prune -af $REDIRECT"  
+          # 删除系统冗余目录
+          eval "sudo rm -rf /etc/apt/sources.list.d/* \
+            /usr/share/dotnet \
+            /usr/local/lib/android \
+            /opt/ghc \
+            /opt/hostedtoolcache/CodeQL $REDIRECT"
+            
+          log "正在 安装编译依赖包"  
+          
+          # 更新 apt 索引
+          eval "sudo -E apt-get -qq update $REDIRECT" 
+          # 安装编译所需工具
+          eval "sudo -E apt-get install -qq -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
+          bzip2 ccache clang cmake cpio curl device-tree-compiler flex gawk gcc-multilib g++-multilib gettext \
+          genisoimage git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev \
+          libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev \
+          libreadline-dev libssl-dev libtool llvm lrzsz msmtp ninja-build p7zip p7zip-full patch pkgconf \
+          python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion \
+          swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev $REDIRECT"
+          
+          # 自动移除冗余包
+          eval "sudo -E apt-get -qq autoremove --purge $REDIRECT"  
+          
+          # 清理 apt 缓存
+          eval "sudo apt-get -qq clean $REDIRECT"    
+          
+          # 设置时区
+          if [ -n "$TIMEZONE" ]; then             
+            sudo timedatectl set-timezone "$TIMEZONE"
+          else
+            log "TIMEZONE 未设置，跳过设置时区"
+          fi
+          
+          # 设置主机名
+          sudo hostname OpenWrt                 
+          sudo hostnamectl set-hostname OpenWrt
+          
+          log "正在 挂载 LVM 磁盘,扩展空间"
+          # 开始挂载磁盘
+          mnt_size=$(( $(df -h /mnt | tail -1 | awk '{print $4}' | sed 's/[^0-9]//g') - 1 ))
+          root_size=$(( $(df -h / | tail -1 | awk '{print $4}' | sed 's/[^0-9]//g') - 4 ))
+          eval "sudo truncate -s \"${mnt_size}G\" /mnt/mnt.img $REDIRECT"
+          eval "sudo truncate -s \"${root_size}G\" /root.img $REDIRECT"
+          eval "sudo losetup /dev/loop6 /mnt/mnt.img $REDIRECT"
+          eval "sudo losetup /dev/loop7 /root.img $REDIRECT"
+          eval "sudo pvcreate /dev/loop6 $REDIRECT"
+          eval "sudo pvcreate /dev/loop7 $REDIRECT"
+          eval "sudo vgcreate github /dev/loop6 /dev/loop7 $REDIRECT"
+          eval "sudo lvcreate -n runner -l 100%FREE github $REDIRECT"
+          eval "sudo mkfs.xfs /dev/github/runner $REDIRECT"
+          
+          # 准备 /builder 目录并挂载
+          if [ ! -d "/builder" ]; then
+            sudo mkdir -p /builder
+          fi
+          sudo chown -R $(id -u):$(id -g) /builder
+          eval "sudo mount /dev/github/runner /builder $REDIRECT"
+          # 准备 /builder/workdir 目录并挂载
+          if [ ! -d "/builder/workdir" ]; then
+            sudo mkdir -p /builder/workdir
+          fi
+          sudo chown -R $(id -u):$(id -g) /builder/workdir
+          
+          # # 删除旧 $BUILD_DIR
+          # if [ -d "$BUILD_DIR" ]; then
+          #   sudo rm -rf $BUILD_DIR
+          # fi
+          
+          # 创建软链接到 builder
+          sudo ln -s /builder/workdir $BUILD_DIR
+          
+          # 创建输出目录
+          if [ ! -d "$OUTPUT_DIR" ]; then
+            sudo mkdir -p "$OUTPUT_DIR"
+            sudo chown -R $(id -u):$(id -g) "$OUTPUT_DIR"
+          fi
+          
+          # 创建 OpenWrt 缓存目录
+          if [ ! -d "/workdir/" ]; then
+            sudo mkdir -p /workdir/
+            sudo chown -R $(id -u):$(id -g) "/workdir/"
+          fi
+          
+          if [ ! -d "/workdir/tmp" ]; then
+            sudo mkdir -p /workdir/tmp
+            sudo chown -R $(id -u):$(id -g) "/workdir/tmp"
+          fi
+          
+          if [ ! -d "/workdir/staging_dir" ]; then
+            sudo mkdir -p /workdir/staging_dir
+            sudo chown -R $(id -u):$(id -g) "/workdir/staging_dir"
+          fi
+          
+          if [ ! -d "/workdir/dl-cache" ]; then
+            sudo mkdir -p /workdir/dl-cache
+            sudo chown -R $(id -u):$(id -g) "/workdir/dl-cache"
+          fi
+          
+          # 在源码目录下创建必要的软链接
+          sudo ln -s /workdir/tmp "$BUILD_DIR/tmp"
+          sudo ln -s /workdir/staging_dir "$BUILD_DIR/staging_dir"
+          sudo ln -s /workdir/dl-cache "$BUILD_DIR/dl"
+          
+          # 生成时间戳
+          ts=$(date +'%Y%m%d%H%M%S')
+          # 设置 release_tag 环境变量
+          echo "release_tag=OpenWRT_Build_$ts" >> "$GITHUB_ENV"  
+
+      # 克隆官方源码
+      - name: 克隆 OpenWrt 源码
+        run: |
+          echo "正在运行 克隆 OpenWrt 源码" > /dev/null 2>&1
+          log() {                            
+            current_time=$(date '+%F %T')
+            echo "[$current_time] $*"
+          }
+          
+          log "正在 克隆 OpenWrt 源码"
+          
+          if [ "$LOG_SILENT" = true ]; then
+            REDIRECT="> /dev/null 2>&1"
+          else
+            REDIRECT=""
+          fi
+          # 临时源码目录
+          TEMP_DIR="$WORKSPACE_DIR/tmp_source" 
+          if [ ! -d "$TEMP_DIR" ]; then
+            mkdir -p "$TEMP_DIR"
+            sudo chown -R $(id -u):$(id -g) "$TEMP_DIR"
+          fi
+          
+          rm -rf "$TEMP_DIR"/*
+          
+          # 克隆源代码
+          eval "git clone --depth 1 --branch $REPO_BRANCH $REPO_URL $TEMP_DIR $REDIRECT"
+          
+          shopt -s dotglob
+          # 移动 临时源码目录
+          mv -f "$TEMP_DIR"/* "$BUILD_DIR"/
+          shopt -u dotglob
+          # 删除 临时源码目录
+          rm -rf "$TEMP_DIR"
+
+      # 构建固件（每个矩阵变量一个 job）
+      - name: 构建固件
+        run: |
+          echo "正在运行 构建固件" > /dev/null 2>&1
+          cfg="${{ matrix.config }}"
+          log() {
+            current_time=$(date '+%F %T')
+            echo "[$current_time] $*"
+          }
+
+          if [ "$LOG_SILENT" = true ]; then
+            REDIRECT="> /dev/null 2>&1"
+          else
+            REDIRECT=""
+          fi
+
+          TEMP_DIR="$WORKSPACE_DIR/tmp_source"
+          if [ ! -d "$TEMP_DIR" ]; then
+            mkdir -p "$TEMP_DIR"
+            sudo chown -R $(id -u):$(id -g) "$TEMP_DIR"
+          else
+            rm -rf "$TEMP_DIR"/*
+          fi
+
+          log "正在构建:$cfg"
+
+          # 进入编译目录
+          if [ -d "$BUILD_DIR" ]; then
+            cd "$BUILD_DIR"
+          else
+            log "构建目录不存在：$BUILD_DIR"
+            exit 1
+          fi
+
+          sudo cp -r "$WORKSPACE_DIR/config/$cfg/" "$TEMP_DIR"/
+
+          # DIY 脚本 1
+          if [ -f "$WORKSPACE_DIR/diy-part1.sh" ]; then
+            eval "chmod +x "$WORKSPACE_DIR/diy-part1.sh""
+            eval ""$WORKSPACE_DIR/diy-part1.sh""
+          fi
+
+          # DIY 脚本 3
+          if [ -f "$WORKSPACE_DIR/config/$cfg/diy-part3.sh" ]; then
+            eval "chmod +x "$WORKSPACE_DIR/config/$cfg/diy-part3.sh""
+            eval ""$WORKSPACE_DIR/config/$cfg/diy-part3.sh""
+          fi
+
+          eval "./scripts/feeds update -a $REDIRECT"
+          eval "./scripts/feeds install -a $REDIRECT"
+
+          CONFIG_PATH="$WORKSPACE_DIR/config/$cfg/$CONFIG_FILE"
+          if [ -f "$CONFIG_PATH" ]; then
+            sudo cp -f "$CONFIG_PATH" .config
+            sudo chown $(id -u):$(id -g) .config
+          else
+            log "自定义包目录不存在：$CUSTOM_PKG_PATH"
+            exit 1
+          fi
+
+          CUSTOM_PKG_PATH="$WORKSPACE_DIR/config/$cfg/$CUSTOM_PKG_DIR"
+          if [ -d "$CUSTOM_PKG_PATH" ]; then
+            cp -rf "$CUSTOM_PKG_PATH" package/
+            sudo chown -R $(id -u):$(id -g) package/
+          else
+            echo "自定义包目录不存在：$CUSTOM_PKG_PATH"
+          fi
+
+          eval "make defconfig $REDIRECT"
+          eval "make download -j$(nproc) $REDIRECT|| make download -j1 $REDIRECT|| make download -j8 $REDIRECT"
+          eval "find dl -size -1024c -exec ls -l {} \; $REDIRECT"
+          eval "find dl -size -1024c -exec rm -f {} \; $REDIRECT"
+
+          # DIY 脚本 2
+          if [ -f "$WORKSPACE_DIR/diy-part2.sh" ]; then
+            eval "chmod +x "$WORKSPACE_DIR/diy-part2.sh""
+            eval ""$WORKSPACE_DIR/diy-part2.sh""
+          fi
+
+          eval "make -j$(nproc) V=s $REDIRECT || make -j1 V=s $REDIRECT || make -j1 $REDIRECT"
+
+          find bin/targets -type f \( -name '*.img.gz' -o -name '*.bin' \) \
+            | grep -Ev 'kernel\.bin$|rootfs\.img\.gz$' \
+            | while read -r img; do
+                base=$(basename "$img")
+                cp "$img" "$OUTPUT_DIR/${cfg}_$base"
+                log "输出固件：${cfg}_$base"
+              done
+
+          # DIY 脚本 4
+          if [ -f "$WORKSPACE_DIR/config/$cfg/diy-part4.sh" ]; then
+            eval "chmod +x "$WORKSPACE_DIR/config/$cfg/diy-part4.sh""
+            eval ""$WORKSPACE_DIR/config/$cfg/diy-part4.sh""
+          fi
+
+          sudo rm -f .config
+          sudo rm -rf bin/targets/*
+          sudo rm -rf "$TEMP_DIR"/*
+
+          log "$cfg 构建结束"
+          cd $WORKSPACE_DIR
+
+      - name: 发布固件到 GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.release_tag }}
+          name: ${{ env.release_tag }}
+          body: 自动构建上传的 OpenWrt 固件集合
+          files: ${{ env.OUTPUT_DIR }}/*
