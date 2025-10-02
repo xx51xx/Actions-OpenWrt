@@ -1,0 +1,3 @@
+config ttyd
+        option command '/bin/login'
+        option ipv6 '1'

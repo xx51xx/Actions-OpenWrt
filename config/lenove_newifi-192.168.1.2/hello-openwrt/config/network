@@ -1,0 +1,42 @@
+config interface 'loopback'  
+        option ifname 'lo'  
+        option proto 'static'  
+        option ipaddr '127.0.0.1'  
+        option netmask '255.0.0.0'   
+  
+config interface 'lan'  
+        option type 'bridge'  
+        option ifname 'eth0'  
+        option proto 'static'  
+        option netmask '255.255.255.0'  
+        option ipaddr '192.168.1.2'  
+        option gateway '192.168.1.1'  
+        option dns '192.168.1.1'  
+
+config interface 'lan6'
+	option _orig_ifname 'eth0'
+	option _orig_bridge 'false'
+	option proto 'dhcpv6'
+	option reqaddress 'try'
+	option reqprefix 'auto'
+	option delegate '0'
+	option ifname '@lan'
+
+config device 'lan_eth0_dev'  
+        option name 'eth0'  
+        option macaddr '24:cf:24:04:e4:15'  
+  
+config device 'wan_eth1_dev'  
+        option name 'eth1'  
+        option macaddr '24:cf:24:04:e4:14'  
+  
+config switch  
+        option name 'switch0'  
+        option reset '1'  
+        option enable_vlan '1'  
+  
+config switch_vlan  
+        option device 'switch0'  
+        option vlan '1'  
+        option vid '1'  
+        option ports '0 1 2 4 6' 

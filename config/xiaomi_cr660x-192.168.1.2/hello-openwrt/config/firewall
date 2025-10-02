@@ -1,0 +1,31 @@
+
+config defaults
+	option syn_flood '1'
+	option input 'ACCEPT'
+	option output 'ACCEPT'
+	option forward 'REJECT'
+	option flow_offloading '1'
+	option flow_offloading_hw '1'
+	option fullcone '2'
+
+config zone
+	option name 'lan'
+	list network 'lan'
+	option input 'ACCEPT'
+	option output 'ACCEPT'
+	option forward 'ACCEPT'
+
+config include
+	option path '/etc/firewall.user'
+
+config include 'miniupnpd'
+	option type 'script'
+	option path '/usr/share/miniupnpd/firewall.include'
+	option family 'any'
+	option reload '1'
+
+config include 'socat'
+	option type 'script'
+	option path '/var/etc/socat.include'
+	option reload '1'
+
