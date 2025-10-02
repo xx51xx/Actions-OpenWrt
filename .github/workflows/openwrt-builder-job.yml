@@ -5,25 +5,46 @@ on:
 
 jobs:
   generate-matrix:
-    name: 生成构建矩阵
+    name: 生成构建矩阵并创建 release_tag
     runs-on: ubuntu-22.04
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+      release_tag: ${{ steps.set-matrix.outputs.release_tag }}
     steps:
       - name: 检出源码仓库
         uses: actions/checkout@v4
 
-      # 自动扫描 config 子目录
+      # 自动扫描 config 子目录并输出 JSON 矩阵与 release_tag
       - name: 生成 config 子目录列表
         id: set-matrix
         run: |
-          configs=$(find config -mindepth 1 -maxdepth 1 -type d -printf '%f,' | sed 's/,$//')
-          echo "matrix=[${configs}]" >> $GITHUB_OUTPUT
+          # 查找 config 目录下所有一级子目录名，生成 JSON 数组字符串
+          arr=()
+          while IFS= read -r d; do
+            # 跳过空行
+            [ -z "$d" ] && continue
+            # 转义双引号（如果子目录名含引号）
+            esc="${d//\"/\\\"}"
+            arr+=("\"$esc\"")
+          done < <(find config -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
+          
+          if [ ${#arr[@]} -eq 0 ]; then
+            echo "matrix=[]" >> "$GITHUB_OUTPUT"
+          else
+            configs_json=$(printf "%s," "${arr[@]}")
+            configs_json="[${configs_json%,}]"
+            echo "matrix=${configs_json}" >> "$GITHUB_OUTPUT"
+          fi
+
+          # 生成 release_tag，传递到后续作业
+          ts=$(date +'%Y%m%d%H%M%S')
+          echo "release_tag=OpenWRT_Build_$ts" >> "$GITHUB_OUTPUT"
 
   build:
     name: 构建并发布 ${{ matrix.config }} 固件
     needs: generate-matrix
     runs-on: ubuntu-22.04
+    # 将生成的 JSON 数组解析为矩阵变量
     strategy:
       matrix:
         config: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
@@ -39,6 +60,8 @@ jobs:
       OUTPUT_DIR: ${{ github.workspace }}/img                             # 最终固件存放目录
       WORKSPACE_DIR: ${{ github.workspace }}                              # GitHub 工作区根目录
       FORCE_UNSAFE_CONFIGURE: 1                                           # 环境变量以允许 root
+      # 从生成矩阵的 job 中读取 release_tag
+      release_tag: ${{ needs.generate-matrix.outputs.release_tag }}
 
     steps:
       - name: 检出源码仓库
@@ -46,7 +69,6 @@ jobs:
 
       # 安装系统依赖和扩展磁盘
       - name: 安装系统依赖和扩展磁盘
-
         run: |
           echo "正在运行 安装系统依赖和扩展磁盘" > /dev/null 2>&1
           
@@ -139,7 +161,7 @@ jobs:
           # fi
           
           # 创建软链接到 builder
-          sudo ln -s /builder/workdir $BUILD_DIR
+          sudo ln -s /builder/workdir $BUILD_DIR || true
           
           # 创建输出目录
           if [ ! -d "$OUTPUT_DIR" ]; then
@@ -169,14 +191,13 @@ jobs:
           fi
           
           # 在源码目录下创建必要的软链接
-          sudo ln -s /workdir/tmp "$BUILD_DIR/tmp"
-          sudo ln -s /workdir/staging_dir "$BUILD_DIR/staging_dir"
-          sudo ln -s /workdir/dl-cache "$BUILD_DIR/dl"
+          sudo ln -s /workdir/tmp "$BUILD_DIR/tmp" || true
+          sudo ln -s /workdir/staging_dir "$BUILD_DIR/staging_dir" || true
+          sudo ln -s /workdir/dl-cache "$BUILD_DIR/dl" || true
           
-          # 生成时间戳
-          ts=$(date +'%Y%m%d%H%M%S')
-          # 设置 release_tag 环境变量
-          echo "release_tag=OpenWRT_Build_$ts" >> "$GITHUB_ENV"  
+          # 生成时间戳（每个 job 可使用已由 generate-matrix 生成的 release_tag）
+          # ts=$(date +'%Y%m%d%H%M%S')
+          # echo "release_tag=OpenWRT_Build_$ts" >> "$GITHUB_ENV"  
 
       # 克隆官方源码
       - name: 克隆 OpenWrt 源码
