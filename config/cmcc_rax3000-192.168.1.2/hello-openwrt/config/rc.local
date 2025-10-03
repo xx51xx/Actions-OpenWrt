@@ -1,7 +1,7 @@
 ﻿# 读写权限
 mount -o remount rw /
 # 创建软链接挂载emcc分区
-[ -d /mnt/mmcblk0p7 ] && { [ -e /home ] && rm -rf /home; ln -s /mnt/mmcblk0p7 /home; }
+[ -b /dev/mmcblk0p7 ] && { mount /dev/mmcblk0p7 /home; }
 # 设置tmp缓存空间为128M
 mount -o remount,size=128M tmpfs /tmp
 # 禁用ICMP
