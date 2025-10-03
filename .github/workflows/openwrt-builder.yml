@@ -231,7 +231,10 @@ jobs:
           
           for cfg in $(echo "$CONFIG_LIST" | jq -r '.[]'); do
           
-            log "正在构建:$cfg"
+            while true; do
+                log "[心跳检测(30分钟/次)]正在构建:$cfg"
+                sleep 1800   # 30 分钟
+            done &
 
             # 进入编译目录
             if [ -d "$BUILD_DIR" ]; then
