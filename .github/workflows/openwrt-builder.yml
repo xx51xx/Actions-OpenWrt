@@ -231,11 +231,6 @@ jobs:
           
           for cfg in $(echo "$CONFIG_LIST" | jq -r '.[]'); do
           
-            while true; do
-                log "[心跳检测(30分钟/次)]正在构建:$cfg"
-                sleep 1800   # 30 分钟
-            done &
-
             # 进入编译目录
             if [ -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
@@ -246,8 +241,13 @@ jobs:
 
             # 如果目录下存在 no_compile 文件，则跳过
             if [ -f "$WORKSPACE_DIR/config/$cfg/no_compile" ]; then
-              log "跳过 $d"
+              log "跳过 $cfg"
               continue
+            else
+              while true; do
+                  log "[心跳检测(30分钟/次)]正在构建:$cfg"
+                  sleep 1800   # 30 分钟
+              done &
             fi
 
             # 复制配置到临时文件夹
