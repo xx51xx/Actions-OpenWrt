@@ -244,6 +244,12 @@ jobs:
               exit 1
             fi
 
+            # 如果目录下存在 no_compile 文件，则跳过
+            if [ -f "./no_compile" ]; then
+              log "跳过 $d"
+              continue
+            fi
+
             # 复制配置到临时文件夹
             sudo cp -r "$WORKSPACE_DIR/config/$cfg/" "$TEMP_DIR"/
             
