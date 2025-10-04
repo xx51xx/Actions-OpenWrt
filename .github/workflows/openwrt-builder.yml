@@ -241,13 +241,19 @@ jobs:
 
             # 如果目录下存在 no_compile 文件，则跳过
             if [ -f "$WORKSPACE_DIR/config/$cfg/no_compile" ]; then
-              log "跳过 $cfg"
-              continue
+                log "跳过 $cfg"
+                continue
             else
-              while true; do
-                  log "[心跳检测(30分钟/次)]正在构建:$cfg"
-                  sleep 1800   # 30 分钟
-              done &
+                oldcfg="$cfg"  # 保存初始 cfg
+                while true; do
+                    log "[心跳检测(30分钟/次)]正在构建: $cfg"
+                    sleep 1800   # 30 分钟
+            
+                    # 检查 cfg 是否被修改
+                    if [ "$cfg" != "$oldcfg" ]; then
+                        continue  # 如果 cfg 改变了，就跳过此次循环
+                    fi
+                done &
             fi
 
             # 复制配置到临时文件夹
