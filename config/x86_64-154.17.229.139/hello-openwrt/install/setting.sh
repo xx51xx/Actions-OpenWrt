@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# 赋权，防止无法执行脚本
+chmod -R 0755 /root
+
 # 扩容磁盘
 /root/soft/set_disk.sh
 
