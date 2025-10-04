@@ -1,4 +1,3 @@
-
 config defaults
 	option syn_flood '1'
 	option input 'ACCEPT'
@@ -28,4 +27,3 @@ config include 'socat'
 	option type 'script'
 	option path '/var/etc/socat.include'
 	option reload '1'
-
