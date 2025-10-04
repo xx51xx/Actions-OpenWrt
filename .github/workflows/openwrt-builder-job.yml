@@ -251,11 +251,6 @@ jobs:
             REDIRECT=""
           fi
           
-          while true; do
-            sleep 1800   # 30 分钟
-            echo "[防退出心跳检测] $(date)"
-          done &
-          
           TEMP_DIR="$WORKSPACE_DIR/tmp_source"
           if [ ! -d "$TEMP_DIR" ]; then
             mkdir -p "$TEMP_DIR"
@@ -264,7 +259,10 @@ jobs:
             rm -rf "$TEMP_DIR"/*
           fi
 
-          log "正在构建:$cfg"
+          while true; do
+              log "[心跳检测(30分钟/次)]正在构建:$cfg"
+              sleep 1800   # 30 分钟
+          done &
 
           # 进入编译目录
           if [ -d "$BUILD_DIR" ]; then
@@ -322,7 +320,7 @@ jobs:
           eval "make -j$(nproc) V=s $REDIRECT || make -j1 V=s $REDIRECT || make -j1 $REDIRECT"
 
           find bin/targets -type f \( -name '*.img.gz' -o -name '*.bin' \) \
-            | grep -Ev 'kernel\.bin$|rootfs\.img\.gz$' \
+            | grep -Ev 'kernel\.bin$|rootfs\.img\.gz$|factory\.bin$' \
             | while read -r img; do
                 base=$(basename "$img")
                 cp "$img" "$OUTPUT_DIR/${cfg}_$base"
@@ -349,6 +347,7 @@ jobs:
           name: ${{ env.release_tag }}
           body: 自动构建上传的 OpenWrt 固件集合
           files: ${{ env.OUTPUT_DIR }}/*
+
 
 
 
