@@ -313,7 +313,7 @@ jobs:
           
             # 收集固件文件并输出
             find bin/targets -type f \( -name '*.img.gz' -o -name '*.bin' \) \
-              | grep -Ev 'kernel\.bin$|rootfs\.img\.gz$' \
+              | grep -Ev 'kernel\.bin$|rootfs\.img\.gz$|factory\.bin$' \
               | while read -r img; do
                   base=$(basename "$img")
                   cp "$img" "$OUTPUT_DIR/${cfg}_$base"
