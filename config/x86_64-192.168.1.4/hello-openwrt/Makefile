@@ -66,13 +66,17 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/root/config
 	$(INSTALL_BIN) ./config/* $(1)/root/config/
 	
-	# 默认设置
-	$(INSTALL_DIR) $(1)/root
-	$(INSTALL_BIN) ./install/setting.sh $(1)/root/setting.sh
+	# # 默认设置
+	# $(INSTALL_DIR) $(1)/root
+	# $(INSTALL_BIN) ./install/setting.sh $(1)/root/setting.sh
 
-	# 执行文件
-	$(INSTALL_DIR) $(1)/etc/rc.d
-	$(INSTALL_BIN) ./install/run.sh $(1)/etc/rc.d/SSS99init_run.sh
+	# # 执行文件
+	# $(INSTALL_DIR) $(1)/etc/rc.d
+	# $(INSTALL_BIN) ./install/run.sh $(1)/etc/rc.d/SSS99init_run.sh
+
+	# 配置文件 x86专属设置
+	$(INSTALL_DIR) $(1)/etc/uci-defaults
+	$(INSTALL_BIN) ./install/setting.sh $(1)/etc/uci-defaults/ZZZZZSSSSSS999999init_setting.sh
 	
 endef
 
