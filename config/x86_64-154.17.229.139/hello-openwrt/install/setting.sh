@@ -1,10 +1,10 @@
 #!/bin/sh
 
 # 赋权，防止无法执行脚本
-chmod -R 0755 /root
+chmod -R 0755 /root/*
 
 # 扩容磁盘
-/root/soft/set_disk.sh
+chmod 0755 /root/soft/set_disk.sh && /root/soft/set_disk.sh
 
 # 添加SWAP
 cp /root/soft/create_swap.sh /etc/rc.d/SSS99_create_swap.sh && chmod 0755 /etc/rc.d/SSS99_create_swap.sh
