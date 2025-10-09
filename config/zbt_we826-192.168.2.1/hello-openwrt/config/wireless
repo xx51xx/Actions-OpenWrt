@@ -9,8 +9,9 @@ config wifi-device 'radio0'
         option mu_beamformer '0'
 
 config wifi-iface 'default_radio0'
-        option device 'radio0'
-        option mode 'ap'
-        option ssid '+_+_Guest'
-        option encryption 'none'
+        option device 'radio
         option network 'lan'
+	option mode 'ap'
+	option ssid '+_+_5GHz'
+	option encryption 'sae-mixed'
+	option key '00665512'
