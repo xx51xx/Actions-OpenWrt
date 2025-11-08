@@ -28,10 +28,10 @@ jobs:
             [ -z "$d" ] && continue
 
             # 如果目录下存在 no_compile 文件，则跳过
-            # if [ -f "config/$d/no_compile" ]; then
-            #   log "跳过 $d"
-            #   continue
-            # fi
+            if [ -f "config/$d/no_compile" ]; then
+              log "跳过 $d"
+              continue
+            fi
 
             # 转义双引号（如果子目录名含引号）
             esc="${d//\"/\\\"}"
@@ -358,6 +358,7 @@ jobs:
           name: ${{ env.release_tag }}
           body: 自动构建上传的 OpenWrt 固件集合
           files: ${{ env.OUTPUT_DIR }}/*
+
 
 
 
