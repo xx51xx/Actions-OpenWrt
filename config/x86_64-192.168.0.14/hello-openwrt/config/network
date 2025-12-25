@@ -21,4 +21,3 @@ config interface 'wan'
         list dns '8.8.8.8'
         list dns '1.1.1.1'
         list dns '2001:4860:4860::8888'
-
