@@ -1,0 +1,24 @@
+config interface 'loopback'
+        option device 'lo'
+        option proto 'static'
+        option ipaddr '127.0.0.1'
+        option netmask '255.0.0.0'
+
+config interface 'wan'
+        option ifname 'eth0'
+        option proto 'static'
+
+        # IPv4 静态配置
+        option ipaddr '192.168.1.4'
+        option gateway '192.168.1.1'
+        option netmask '255.255.255.0'
+
+        # IPv6 动态获取
+        option ip6assign '64'
+        option reqprefix 'auto'
+        option reqaddress 'try'
+
+        list dns '192.168.1.1'
+        list dns '223.5.5.5'
+        list dns '2400:3200::1'
+
