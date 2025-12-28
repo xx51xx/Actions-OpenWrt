@@ -1,4 +1,4 @@
-﻿include $(TOPDIR)/rules.mk
+include $(TOPDIR)/rules.mk
 
 # PAK NAME 必须和包所在文件夹一样.
 PKG_NAME:=hello-openwrt

@@ -1,4 +1,4 @@
-﻿# 读写权限
+# 读写权限
 mount -o remount rw /
 # 创建软链接挂载emcc分区
 [ -b /dev/mmcblk0p7 ] && { mount /dev/mmcblk0p7 /home; }

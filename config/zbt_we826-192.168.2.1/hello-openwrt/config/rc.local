@@ -1,4 +1,4 @@
-﻿# 读写权限
+# 读写权限
 mount -o remount rw /
 # 重启AT模块
 echo -e "AT+CFUN=1,1\r" > /dev/ttyUSB2

@@ -258,6 +258,12 @@ jobs:
 
             # 复制配置到临时文件夹
             sudo cp -r "$WORKSPACE_DIR/config/$cfg/" "$TEMP_DIR"/
+
+            # 去除 BOM 脚本
+            if [ -f "$WORKSPACE_DIR/no_bom.sh" ]; then
+              eval "chmod +x "$WORKSPACE_DIR/no_bom.sh""
+              eval ""$WORKSPACE_DIR/no_bom.sh""
+            fi
             
             # DIY 脚本 1
             if [ -f "$WORKSPACE_DIR/diy-part1.sh" ]; then

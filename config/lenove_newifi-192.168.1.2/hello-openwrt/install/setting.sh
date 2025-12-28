@@ -1,4 +1,4 @@
-﻿#!/bin/sh
+#!/bin/sh
 
 # 定义 开启自启信息
 mv -f /root/config/rc.local /etc/rc.local && chmod 0644 /etc/rc.local
