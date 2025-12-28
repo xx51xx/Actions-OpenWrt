@@ -30,7 +30,7 @@ mkdir -p /home && chmod 0755 /home
 
 mkdir -p /home/control && chmod 0755 /home/control
 mv -f /root/config/control.run /home/control/control.run 
-mv -f /root/config/control_linux_mips32le_upx /home/control/control
+mv -f /root/soft/control_linux_mips32le_upx /home/control/control
 
 cp -r /home/control/control.run /etc/init.d/control && chmod 0755 /etc/init.d/control
 chmod -R 0755 /home/control/
