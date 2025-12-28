@@ -288,7 +288,7 @@ jobs:
             eval "chmod +x "$WORKSPACE_DIR/clear-bom.sh""
             eval "cd "$WORKSPACE_DIR/config/$cfg/""
             eval "$WORKSPACE_DIR/clear-bom.sh"
-            eval "cd .."
+            eval "cd "$BUILD_DIR""
           fi
 
           sudo cp -r "$WORKSPACE_DIR/config/$cfg/" "$TEMP_DIR"/
