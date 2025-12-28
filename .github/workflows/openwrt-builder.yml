@@ -262,21 +262,23 @@ jobs:
             # 去除 BOM 脚本
             if [ -f "$WORKSPACE_DIR/no_bom.sh" ]; then
               eval "chmod +x "$WORKSPACE_DIR/no_bom.sh""
-              eval ""$WORKSPACE_DIR/no_bom.sh""
+              eval "cd "$WORKSPACE_DIR""
+              eval "./no_bom.sh"
+              eval "cd .."
             fi
             
             # DIY 脚本 1
             if [ -f "$WORKSPACE_DIR/diy-part1.sh" ]; then
               # log "执行 DIY 脚本 1"
               eval "chmod +x "$WORKSPACE_DIR/diy-part1.sh""
-              eval ""$WORKSPACE_DIR/diy-part1.sh""
+              eval "$WORKSPACE_DIR/diy-part1.sh"
             fi
             
             # DIY 脚本 3
             if [ -f "$WORKSPACE_DIR/config/$cfg/diy-part3.sh" ]; then
               # log "执行 DIY 脚本 3"
               eval "chmod +x "$WORKSPACE_DIR/config/$cfg/diy-part3.sh""
-              eval ""$WORKSPACE_DIR/config/$cfg/diy-part3.sh""
+              eval "$WORKSPACE_DIR/config/$cfg/diy-part3.sh"
             fi
             
             # 更新OpenWrt软件源
@@ -322,7 +324,7 @@ jobs:
             if [ -f "$WORKSPACE_DIR/diy-part2.sh" ]; then
               # log "执行 DIY 脚本 2"
               eval "chmod +x "$WORKSPACE_DIR/diy-part2.sh""
-              eval ""$WORKSPACE_DIR/diy-part2.sh""
+              eval "$WORKSPACE_DIR/diy-part2.sh"
             fi
             
             # log "开始编译 $cfg"
@@ -342,7 +344,7 @@ jobs:
             if [ -f "$WORKSPACE_DIR/config/$cfg/diy-part4.sh" ]; then
               # log "执行 DIY 脚本 4"
               eval "chmod +x "$WORKSPACE_DIR/config/$cfg/diy-part4.sh""
-              eval ""$WORKSPACE_DIR/config/$cfg/diy-part4.sh""
+              eval "$WORKSPACE_DIR/config/$cfg/diy-part4.sh"
             fi
             
             sudo rm -f .config
