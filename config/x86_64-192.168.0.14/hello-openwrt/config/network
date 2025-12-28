@@ -16,6 +16,8 @@ config interface 'wan'
         # IPv6 静态配置
         option ip6addr '2a01:4f8:272:e90d::a/64'
         option ip6gw '2a01:4f8:272:e900::1'
+        option accept_ra '0'
+        option ip6assign '64'
 
         list dns '8.8.8.8'
         list dns '1.1.1.1'
