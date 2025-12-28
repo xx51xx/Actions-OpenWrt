@@ -2,28 +2,33 @@
 
 #### 操作步骤
 
-1. 解压 
+1. 下载
 ```
-gzip -d openwrt-xxxx.img.gz
+wget -O openwrt.img.gz 链接
 ```
 
-2. 让文件系统只读 
+3. 解压 
+```
+gzip -d openwrt.img.gz
+```
+
+3. 让文件系统只读 
 
 ```
 echo 1 > /proc/sys/kernel/sysrq
 echo u > /proc/sysrq-trigger
 ```
 
-3. DD
+4. DD
 
 ```
-dd if=openwrt-xxxx.img of=/dev/vda bs=4M status=progress oflag=sync
+dd if=openwrt.img of=/dev/vda bs=4M status=progress oflag=sync
 
 # 或者 
 dd if=openwrt-xxxx.img of=/dev/vda bs=4M conv=fsync
 ```
 
-4. 强制重启
+5. 强制重启
 ```
 echo 1 > /proc/sys/kernel/sysrq
 echo b > /proc/sysrq-trigger
