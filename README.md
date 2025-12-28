@@ -5,7 +5,6 @@
 1. 解压 
 ```
 gzip -d openwrt-xxxx.img.gz
-
 ```
 
 2. 让文件系统只读 
