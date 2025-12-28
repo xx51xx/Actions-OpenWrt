@@ -288,19 +288,21 @@ jobs:
           # 去除 BOM 脚本
           if [ -f "$WORKSPACE_DIR/no_bom.sh" ]; then
             eval "chmod +x "$WORKSPACE_DIR/no_bom.sh""
-            eval ""$WORKSPACE_DIR/no_bom.sh""
+            eval "cd "$WORKSPACE_DIR""
+            eval "./no_bom.sh"
+            eval "cd .."
           fi
 
           # DIY 脚本 1
           if [ -f "$WORKSPACE_DIR/diy-part1.sh" ]; then
             eval "chmod +x "$WORKSPACE_DIR/diy-part1.sh""
-            eval ""$WORKSPACE_DIR/diy-part1.sh""
+            eval "$WORKSPACE_DIR/diy-part1.sh"
           fi
 
           # DIY 脚本 3
           if [ -f "$WORKSPACE_DIR/config/$cfg/diy-part3.sh" ]; then
             eval "chmod +x "$WORKSPACE_DIR/config/$cfg/diy-part3.sh""
-            eval ""$WORKSPACE_DIR/config/$cfg/diy-part3.sh""
+            eval "$WORKSPACE_DIR/config/$cfg/diy-part3.sh"
           fi
 
           eval "./scripts/feeds update -a $REDIRECT"
@@ -331,7 +333,7 @@ jobs:
           # DIY 脚本 2
           if [ -f "$WORKSPACE_DIR/diy-part2.sh" ]; then
             eval "chmod +x "$WORKSPACE_DIR/diy-part2.sh""
-            eval ""$WORKSPACE_DIR/diy-part2.sh""
+            eval "$WORKSPACE_DIR/diy-part2.sh"
           fi
 
           eval "make -j$(nproc) V=s $REDIRECT || make -j1 V=s $REDIRECT || make -j1 $REDIRECT"
@@ -347,7 +349,7 @@ jobs:
           # DIY 脚本 4
           if [ -f "$WORKSPACE_DIR/config/$cfg/diy-part4.sh" ]; then
             eval "chmod +x "$WORKSPACE_DIR/config/$cfg/diy-part4.sh""
-            eval ""$WORKSPACE_DIR/config/$cfg/diy-part4.sh""
+            eval "$WORKSPACE_DIR/config/$cfg/diy-part4.sh"
           fi
 
           sudo rm -f .config
