@@ -65,7 +65,7 @@ jobs:
       REPO_BRANCH: master                                                 # 克隆的分支
       CUSTOM_PKG_DIR: hello-openwrt                                       # 每个 config 子目录下的自定义包目录名
       CONFIG_FILE: .config                                                # 每个 config 子目录下的配置文件名
-      LOG_SILENT: true                                                   # 是否静默日志输出：true 输出日志，false 静默
+      LOG_SILENT: false                                                   # 日志输出：true
       TIMEZONE: Asia/Shanghai                                             # 时区设置，用于 date/timedatectl
       BUILD_DIR: ${{ github.workspace }}/openwrt                          # 源码与构建输出目录
       OUTPUT_DIR: ${{ github.workspace }}/img                             # 最终固件存放目录
@@ -93,7 +93,7 @@ jobs:
           echo "FORCE_UNSAFE_CONFIGURE=1" >> "$GITHUB_ENV"   
           export FORCE_UNSAFE_CONFIGURE=1
           # 根据 LOG_SILENT 控制是否重定向输出
-          if [ "$LOG_SILENT" = true ]; then        
+          if [ "$LOG_SILENT" = false ]; then        
             REDIRECT="> /dev/null 2>&1"
           else
             REDIRECT=""
@@ -221,7 +221,7 @@ jobs:
           
           log "正在 克隆 OpenWrt 源码"
           
-          if [ "$LOG_SILENT" = true ]; then
+          if [ "$LOG_SILENT" = false ]; then
             REDIRECT="> /dev/null 2>&1"
           else
             REDIRECT=""
@@ -256,7 +256,7 @@ jobs:
             echo "[$current_time] $*"
           }
 
-          if [ "$LOG_SILENT" = true ]; then
+          if [ "$LOG_SILENT" = false ]; then
             REDIRECT="> /dev/null 2>&1"
           else
             REDIRECT=""
