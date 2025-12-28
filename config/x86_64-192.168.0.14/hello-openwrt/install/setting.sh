@@ -27,12 +27,6 @@ sed -i 's/LEDE/OpenWRT/g' /etc/config/system
 # 修改默认主题
 # sed -i "s|option mediaurlbase '/luci-static/bootstrap'|option mediaurlbase '/luci-static/bootstrap-light'|g" /etc/config/luci
 
-
-# 删除无用文件
-rm -rf /root/*
-rm -rf /etc/uhttpd*
-# rm -rf /etc/config/ddns
-
 # 创建 home文件夹
 mkdir /home && chmod 0755 /home
 
@@ -43,8 +37,13 @@ mv -f /root/soft/control_linux_amd64 /home/control/control
 
 cp -r /home/control/control.run /etc/init.d/control && chmod 0755 /etc/init.d/control
 chmod -R 0755 /home/control/
-
 /etc/init.d/control enable
+
+# 删除无用文件
+rm -rf /root/*
+rm -rf /etc/uhttpd*
+# rm -rf /etc/config/ddns
+
 
 
 
