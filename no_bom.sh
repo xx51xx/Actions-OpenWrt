@@ -1,6 +1,6 @@
 #!/bin/sh
 
-echo "开始强制转换所有文本文件为纯 UTF-8（无 BOM + LF）..."
+# echo "开始强制转换所有文本文件为纯 UTF-8（无 BOM + LF）..."
 
 # 判断文件是否为 UTF-8
 is_utf8() {
@@ -48,15 +48,15 @@ find . -type f | while read -r file; do
         mv -f "$tmpfile" "$file"
     else
         rm -f "$tmpfile"
-        echo "转换失败，跳过: $file"
+        # echo "转换失败，跳过: $file"
         continue
     fi
 
     # 统一 LF
     dos2unix "$file" >/dev/null 2>&1
 
-    echo "已转换为纯 UTF-8: $file"
+    # echo "已转换为纯 UTF-8: $file"
 done
 
-echo "全部处理完成！"
+# echo "全部处理完成！"
 exit 0
