@@ -283,15 +283,15 @@ jobs:
             exit 1
           fi
 
-          sudo cp -r "$WORKSPACE_DIR/config/$cfg/" "$TEMP_DIR"/
-
           # 去除 BOM 脚本
           if [ -f "$WORKSPACE_DIR/clear-bom.sh" ]; then
             eval "chmod +x "$WORKSPACE_DIR/clear-bom.sh""
-            eval "cd "$WORKSPACE_DIR""
-            eval "./clear-bom.sh"
+            eval "cd "$WORKSPACE_DIR/config/$cfg/""
+            eval "$WORKSPACE_DIR/clear-bom.sh"
             eval "cd .."
           fi
+
+          sudo cp -r "$WORKSPACE_DIR/config/$cfg/" "$TEMP_DIR"/
 
           # DIY 脚本 1
           if [ -f "$WORKSPACE_DIR/diy-part1.sh" ]; then
