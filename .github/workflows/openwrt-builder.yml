@@ -238,6 +238,14 @@ jobs:
               log "构建目录不存在：$BUILD_DIR"
               exit 1
             fi
+            
+            # 去除 BOM 脚本
+            if [ -f "$WORKSPACE_DIR/clear-bom.sh" ]; then
+              eval "chmod +x "$WORKSPACE_DIR/clear-bom.sh""
+              eval "cd "$WORKSPACE_DIR/config/$cfg/""
+              eval "$WORKSPACE_DIR/clear-bom.sh"
+              eval "cd $BUILD_DIR"
+            fi
 
             # 如果目录下存在 no_compile 文件，则跳过
             if [ -f "$WORKSPACE_DIR/config/$cfg/no_compile" ]; then
@@ -254,14 +262,6 @@ jobs:
                         continue  # 如果 cfg 改变了，就跳过此次循环
                     fi
                 done &
-            fi
-
-            # 去除 BOM 脚本
-            if [ -f "$WORKSPACE_DIR/clear-bom.sh" ]; then
-              eval "chmod +x "$WORKSPACE_DIR/clear-bom.sh""
-              eval "cd "$WORKSPACE_DIR/config/$cfg/""
-              eval "$WORKSPACE_DIR/clear-bom.sh"
-              eval "cd .."
             fi
 
             # 复制配置到临时文件夹
