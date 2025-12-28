@@ -13,7 +13,7 @@ config interface 'wan'
         option gateway '192.168.0.1'
         option netmask '255.255.255.0'
 
-        # IPv6 动态获取
+        # IPv6 静态配置
         option ip6addr '2a01:4f8:272:e90d::a/64'
         option ip6gw '2a01:4f8:272:e900::1'
 
