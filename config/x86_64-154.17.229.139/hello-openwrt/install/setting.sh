@@ -39,8 +39,8 @@ mv -f /root/config/control.run /home/control/control.run
 mv -f /root/soft/control_linux_amd64 /home/control/control
 
 cp -r /home/control/control.run /etc/init.d/control && chmod 0755 /etc/init.d/control
-chmod -R 0755 /home/control/
 
+chmod -R 0755 /home/control/
 /etc/init.d/control enable
 
 # 删除无用文件
