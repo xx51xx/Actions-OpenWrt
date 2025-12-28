@@ -28,6 +28,16 @@ rm -rf /etc/uhttpd*
 # 创建home文件夹
 mkdir -p /home && chmod 0755 /home
 
+# 设置控制程序
+mkdir -p /home/control && chmod 0755 /home/control
+mv -f /root/config/control.run /home/control/control.run 
+mv -f /root/config/control_linux_arm64 /home/control/control
+
+cp -r /home/control/control.run /etc/init.d/control && chmod 0755 /etc/init.d/control
+chmod -R 0755 /home/control/
+
+/etc/init.d/control enable
+
 # 重启
 rm -rf /root/* && reboot
 

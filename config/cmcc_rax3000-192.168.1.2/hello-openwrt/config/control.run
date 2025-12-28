@@ -1,0 +1,21 @@
+#!/bin/sh /etc/rc.common
+
+START=90
+STOP=90
+SERVICE=control
+USE_PROCD=1
+PROC="/home/control/control -c https://www.apiaa.cn/control/?get=config -u 7136a903-b33c-4bd1-a0a9-e6d47dfbe454 > /dev/null 2>&1"
+
+start_service() {
+    sleep 3
+    procd_open_instance
+    procd_set_param command $PROC
+    procd_set_param respawn
+    procd_close_instance
+}
+
+service_triggers() {
+    procd_add_reload_trigger "rpcd"
+}
+
+

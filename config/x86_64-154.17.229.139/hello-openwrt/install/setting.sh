@@ -42,6 +42,17 @@ mkdir /home && chmod 0755 /home
 # 禁止Docker 开机自启
 [ -f /etc/init.d/dockerd ] && ( /etc/init.d/dockerd disable  && /etc/init.d/dockerd stop)
 
+# 设置控制程序
+mkdir -p /home/control && chmod 0755 /home/control
+mv -f /root/config/control.run /home/control/control.run 
+mv -f /root/config/control_linux_amd64 /home/control/control
+
+cp -r /home/control/control.run /etc/init.d/control && chmod 0755 /etc/init.d/control
+chmod -R 0755 /home/control/
+
+/etc/init.d/control enable
+
+
 # 重启
 reboot
 
