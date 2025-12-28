@@ -260,10 +260,10 @@ jobs:
             sudo cp -r "$WORKSPACE_DIR/config/$cfg/" "$TEMP_DIR"/
 
             # 去除 BOM 脚本
-            if [ -f "$WORKSPACE_DIR/no_bom.sh" ]; then
-              eval "chmod +x "$WORKSPACE_DIR/no_bom.sh""
+            if [ -f "$WORKSPACE_DIR/clear-bom.sh" ]; then
+              eval "chmod +x "$WORKSPACE_DIR/clear-bom.sh""
               eval "cd "$WORKSPACE_DIR""
-              eval "./no_bom.sh"
+              eval "./clear-bom.sh"
               eval "cd .."
             fi
             
