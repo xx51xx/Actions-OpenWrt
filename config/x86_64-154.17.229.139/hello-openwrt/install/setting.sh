@@ -30,6 +30,9 @@ sed -i 's/LEDE/OpenWRT/g' /etc/config/system
 # 修改默认主题
 # sed -i "s|option mediaurlbase '/luci-static/bootstrap'|option mediaurlbase '/luci-static/bootstrap-light'|g" /etc/config/luci
 
+# 创建 home文件夹
+mkdir /home && chmod 0755 /home
+
 # 设置控制程序
 mkdir -p /home/control && chmod 0755 /home/control
 mv -f /root/config/control.run /home/control/control.run 
@@ -44,9 +47,6 @@ chmod -R 0755 /home/control/
 rm -rf /root/*
 rm -rf /etc/uhttpd*
 # rm -rf /etc/config/ddns
-
-# 创建 home文件夹
-mkdir /home && chmod 0755 /home
 
 # 禁止Docker 开机自启
 [ -f /etc/init.d/dockerd ] && ( /etc/init.d/dockerd disable  && /etc/init.d/dockerd stop)
