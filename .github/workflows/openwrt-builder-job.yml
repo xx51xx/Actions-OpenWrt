@@ -27,7 +27,7 @@ jobs:
           while IFS= read -r d; do
             [ -z "$d" ] && continue
 
-            # 如果目录下存在 no_compile 文件，则跳过
+            # 如果目录下存在 no_compile 文件,则跳过
             if [ -f "config/$d/no_compile" ]; then
               log "跳过 $d"
               continue
@@ -46,7 +46,7 @@ jobs:
             echo "matrix=${configs_json}" >> "$GITHUB_OUTPUT"
           fi
 
-          # 生成 release_tag，传递到后续作业
+          # 生成 release_tag,传递到后续作业
           ts=$(date +'%Y%m%d%H%M%S')
           echo "release_tag=OpenWRT_Build_$ts" >> "$GITHUB_OUTPUT"
 
@@ -66,7 +66,7 @@ jobs:
       CUSTOM_PKG_DIR: hello-openwrt                                       # 每个 config 子目录下的自定义包目录名
       CONFIG_FILE: .config                                                # 每个 config 子目录下的配置文件名
       LOG_SILENT: false                                                   # 日志输出：true
-      TIMEZONE: Asia/Shanghai                                             # 时区设置，用于 date/timedatectl
+      TIMEZONE: Asia/Shanghai                                             # 时区设置,用于 date/timedatectl
       BUILD_DIR: ${{ github.workspace }}/openwrt                          # 源码与构建输出目录
       OUTPUT_DIR: ${{ github.workspace }}/img                             # 最终固件存放目录
       WORKSPACE_DIR: ${{ github.workspace }}                              # GitHub 工作区根目录
@@ -83,7 +83,7 @@ jobs:
         run: |
           echo "正在运行 安装系统依赖和扩展磁盘" > /dev/null 2>&1
           
-          # 定义日志函数，格式 [YYYY-MM-DD HH:MM:SS] 消息
+          # 定义日志函数,格式 [YYYY-MM-DD HH:MM:SS] 消息
           log() {                                 
             current_time=$(date '+%F %T')
             echo "[$current_time] $*"
@@ -133,7 +133,7 @@ jobs:
           if [ -n "$TIMEZONE" ]; then             
             sudo timedatectl set-timezone "$TIMEZONE"
           else
-            log "TIMEZONE 未设置，跳过设置时区"
+            log "TIMEZONE 未设置,跳过设置时区"
           fi
           
           # 设置主机名
@@ -345,6 +345,16 @@ jobs:
                 cp "$img" "$OUTPUT_DIR/${cfg}_$base"
                 log "输出固件：${cfg}_$base"
               done
+
+          # 如果 cfg 中包含 lxc,则额外复制 rootfs.img.xx
+          if echo "$cfg" | grep -qi "lxc"; then
+            find bin/targets -type f \( -name '*rootfs.img.gz' -o -name '*rootfs.bin' \) \
+              | while read -r rootfs; do
+                  base=$(basename "$rootfs")
+                  cp "$rootfs" "$OUTPUT_DIR/${cfg}_$base"
+                  log "输出 LXC rootfs：${cfg}_$base"
+                done
+          fi
 
           # DIY 脚本 4
           if [ -f "$WORKSPACE_DIR/config/$cfg/diy-part4.sh" ]; then

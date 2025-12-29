@@ -17,7 +17,7 @@ jobs:
       CONFIG_FILE: .config                                                # 每个 config 子目录下的配置文件名
       LOG_SILENT: false                                                   # 日志输出：true
       
-      TIMEZONE: Asia/Shanghai                                             # 时区设置，用于 date/timedatectl
+      TIMEZONE: Asia/Shanghai                                             # 时区设置,用于 date/timedatectl
       BUILD_DIR: ${{ github.workspace }}/openwrt                          # 源码与构建输出目录
       OUTPUT_DIR: ${{ github.workspace }}/img                             # 最终固件存放目录
       WORKSPACE_DIR: ${{ github.workspace }}                              # GitHub 工作区根目录
@@ -34,7 +34,7 @@ jobs:
         run: |
           echo "正在运行 安装系统依赖和扩展磁盘" > /dev/null 2>&1
           
-          # 定义日志函数，格式 [YYYY-MM-DD HH:MM:SS] 消息
+          # 定义日志函数,格式 [YYYY-MM-DD HH:MM:SS] 消息
           log() {                                 
             current_time=$(date '+%F %T')
             echo "[$current_time] $*"
@@ -84,7 +84,7 @@ jobs:
           if [ -n "$TIMEZONE" ]; then             
             sudo timedatectl set-timezone "$TIMEZONE"
           else
-            log "TIMEZONE 未设置，跳过设置时区"
+            log "TIMEZONE 未设置,跳过设置时区"
           fi
           
           # 设置主机名
@@ -247,19 +247,19 @@ jobs:
               eval "cd $BUILD_DIR"
             fi
 
-            # 如果目录下存在 no_compile 文件，则跳过
+            # 如果目录下存在 no_compile 文件,则跳过
             if [ -f "$WORKSPACE_DIR/config/$cfg/no_compile" ]; then
                 log "跳过 $cfg"
                 continue
             else
                 oldcfg="$cfg"  # 保存初始 cfg
                 while true; do
-                    log "[心跳检测(30分钟/次)]正在构建: $cfg"
-                    sleep 1800   # 30 分钟
-            
                     # 检查 cfg 是否被修改
                     if [ "$cfg" != "$oldcfg" ]; then
-                        continue  # 如果 cfg 改变了，就跳过此次循环
+                        continue  # 如果 cfg 改变了,就跳过此次循环
+                    else
+                        log "[心跳检测(30分钟/次)]正在构建: $cfg"
+                        sleep 1800   # 30 分钟
                     fi
                 done &
             fi
@@ -294,7 +294,7 @@ jobs:
               sudo chown $(id -u):$(id -g) .config
             else
               log "自定义包目录不存在：$CUSTOM_PKG_PATH"
-              # log "请注意，配置文件 $CONFIG_PATH 不存在！"
+              # log "请注意,配置文件 $CONFIG_PATH 不存在！"
               # 如注释 [exit 1] 生成默认配置文件执行,流程不会结束
               exit 1
             fi
@@ -339,7 +339,17 @@ jobs:
                   cp "$img" "$OUTPUT_DIR/${cfg}_$base"
                   log "输出固件：${cfg}_$base"
                 done
-                
+
+            # 如果 cfg 中包含 lxc,则额外复制 rootfs.img.xx
+            if echo "$cfg" | grep -qi "lxc"; then
+              find bin/targets -type f \( -name '*rootfs.img.gz' -o -name '*rootfs.bin' \) \
+                | while read -r rootfs; do
+                    base=$(basename "$rootfs")
+                    cp "$rootfs" "$OUTPUT_DIR/${cfg}_$base"
+                    log "输出 LXC rootfs：${cfg}_$base"
+                  done
+            fi
+
             # DIY 脚本 4
             if [ -f "$WORKSPACE_DIR/config/$cfg/diy-part4.sh" ]; then
               # log "执行 DIY 脚本 4"
