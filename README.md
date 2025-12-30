@@ -24,7 +24,7 @@ echo u > /proc/sysrq-trigger
 ```
 dd if=openwrt.img of=/dev/vda bs=4M status=progress oflag=sync
 
-# 或者 
+# OpenWRT to DD OpenWRT 
 dd if=openwrt.img of=/dev/vda bs=4M conv=fsync
 ```
 
