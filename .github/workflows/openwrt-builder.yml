@@ -15,7 +15,7 @@ jobs:
       REPO_BRANCH: master                                                 # 克隆的分支
       CUSTOM_PKG_DIR: hello-openwrt                                       # 每个 config 子目录下的自定义包目录名
       CONFIG_FILE: .config                                                # 每个 config 子目录下的配置文件名
-      LOG_SILENT: false                                                   # 日志输出：true
+      LOG_SILENT: false                                                   # 日志输出:true
       
       TIMEZONE: Asia/Shanghai                                             # 时区设置,用于 date/timedatectl
       BUILD_DIR: ${{ github.workspace }}/openwrt                          # 源码与构建输出目录
@@ -25,11 +25,11 @@ jobs:
 
 
     steps:
-      # 第一步：检出当前仓库（包含本工作流文件）
+      # 第一步:检出当前仓库（包含本工作流文件）
       - name: 检出源码仓库                          
         uses: actions/checkout@v4
 
-      # 第二步：安装系统依赖和扩展磁盘
+      # 第二步:安装系统依赖和扩展磁盘
       - name: 安装系统依赖和扩展磁盘            
         run: |
           echo "正在运行 安装系统依赖和扩展磁盘" > /dev/null 2>&1
@@ -162,7 +162,7 @@ jobs:
           # 设置 release_tag 环境变量
           echo "release_tag=OpenWRT_Build_$ts" >> "$GITHUB_ENV"  
           
-      # 第三步：克隆官方源码
+      # 第三步:克隆官方源码
       - name: 克隆 OpenWrt 源码                
         run: |
           echo "正在运行 克隆 OpenWrt 源码" > /dev/null 2>&1
@@ -198,7 +198,7 @@ jobs:
           # 删除 临时源码目录
           rm -rf "$TEMP_DIR"
           
-      # 第四步：按 config 子目录循环构建
+      # 第四步:按 config 子目录循环构建
       - name: 按配置构建固件                  
         run: |
           echo "正在运行 按配置构建固件" > /dev/null 2>&1
@@ -235,36 +235,37 @@ jobs:
             if [ -d "$BUILD_DIR" ]; then
               cd "$BUILD_DIR"
             else
-              log "构建目录不存在：$BUILD_DIR"
+              log "构建目录不存在:$BUILD_DIR"
               exit 1
             fi
             
             # 去除 BOM 脚本
-            if [ -f "$WORKSPACE_DIR/clear-bom.sh" ]; then
-              eval "chmod +x "$WORKSPACE_DIR/clear-bom.sh""
-              eval "cd "$WORKSPACE_DIR/config/$cfg/""
-              eval "$WORKSPACE_DIR/clear-bom.sh"
-              eval "cd $BUILD_DIR"
-            fi
+            # if [ -f "$WORKSPACE_DIR/clear-bom.sh" ]; then
+            #   eval "chmod +x "$WORKSPACE_DIR/clear-bom.sh""
+            #   eval "cd "$WORKSPACE_DIR/config/$cfg/""
+            #   eval "$WORKSPACE_DIR/clear-bom.sh"
+            #   eval "cd $BUILD_DIR"
+            # fi
 
             # 如果目录下存在 no_compile 文件,则跳过
-            if [ -f "$WORKSPACE_DIR/config/$cfg/no_compile123" ]; then
+            if [ -f "$WORKSPACE_DIR/config/$cfg/no_compile" ]; then
                 log "跳过 $cfg"
                 continue
-            else
-                oldcfg="$cfg"  # 保存初始 cfg
-                while true; do
-                    # 检查 cfg 是否被修改
-                    if [ "$cfg" != "$oldcfg" ]; then
-                        continue  # 如果 cfg 改变了,就跳过此次循环
+            fi
+
+            oldcfg="$cfg"  # 保存初始 cfg
+            while true; do
+                # 检查 cfg 是否被修改
+                if [ "$cfg" != "$oldcfg" ]; then
+                    continue  # 如果 cfg 改变了,就跳过此次循环
+                else
+                    if [ "$cfg" == "$oldcfg" ]; then
+                        log "[心跳检测(30分钟/次)]正在构建: $oldcfg"
                     else
-                        if [ "$cfg" == "$oldcfg" ]; then
-                            log "[心跳检测(30分钟/次)]正在构建: $oldcfg"
-                        fi
                         sleep 1800   # 30 分钟
                     fi
-                done &
-            fi
+                fi
+            done &
 
             # 复制配置到临时文件夹
             sudo cp -r "$WORKSPACE_DIR/config/$cfg/" "$TEMP_DIR"/
@@ -295,7 +296,7 @@ jobs:
               sudo cp -f "$CONFIG_PATH" .config
               sudo chown $(id -u):$(id -g) .config
             else
-              log "自定义包目录不存在：$CUSTOM_PKG_PATH"
+              log "自定义包目录不存在:$CUSTOM_PKG_PATH"
               # log "请注意,配置文件 $CONFIG_PATH 不存在！"
               # 如注释 [exit 1] 生成默认配置文件执行,流程不会结束
               exit 1
@@ -304,12 +305,12 @@ jobs:
             # 复制 hello-openwrt 包
             CUSTOM_PKG_PATH="$WORKSPACE_DIR/config/$cfg/$CUSTOM_PKG_DIR"
             if [ -d "$CUSTOM_PKG_PATH" ]; then
-              # log "复制自定义包目录：$CUSTOM_PKG_DIR"
+              # log "复制自定义包目录:$CUSTOM_PKG_DIR"
               cp -rf "$CUSTOM_PKG_PATH" package/
               sudo chown -R $(id -u):$(id -g) package/
             else 
-              echo "自定义包目录不存在：$CUSTOM_PKG_PATH"
-              # log "自定义包目录不存在：$CUSTOM_PKG_PATH"
+              echo "自定义包目录不存在:$CUSTOM_PKG_PATH"
+              # log "自定义包目录不存在:$CUSTOM_PKG_PATH"
               
               # 如注释 [exit 1] 默认继续执行,流程不会结束
               # exit 1
@@ -339,7 +340,7 @@ jobs:
                 | while read -r rootfs; do
                     base=$(basename "$rootfs")
                     cp "$rootfs" "$OUTPUT_DIR/${cfg}_$base"
-                    log "输出 LXC rootfs：${cfg}_$base"
+                    log "输出 LXC rootfs:${cfg}_$base"
                   done
             else
               # 收集固件文件并输出
@@ -348,7 +349,7 @@ jobs:
                 | while read -r img; do
                     base=$(basename "$img")
                     cp "$img" "$OUTPUT_DIR/${cfg}_$base"
-                    log "输出固件：${cfg}_$base"
+                    log "输出固件:${cfg}_$base"
                   done
             fi
 
@@ -360,12 +361,10 @@ jobs:
             fi
             
             eval "make clean $REDIRECT"
-            eval "make defconfig $REDIRECT"
+            # eval "make defconfig $REDIRECT"
             sudo rm -f .config
             sudo rm -rf bin/targets/*
             sudo rm -rf "$TEMP_DIR"/*
-            
-            
             
             # log "$cfg 构建结束"
             log ""
@@ -376,7 +375,7 @@ jobs:
           log ""
           log "所有目标构建结束"
           
-      - name: 发布固件到 GitHub Release        # 第五步：将生成的固件上传到 Release
+      - name: 发布固件到 GitHub Release        # 第五步:将生成的固件上传到 Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.release_tag }}     # 使用前面生成的 release_tag

@@ -1,5 +1,5 @@
 #!/bin/sh
-
+# 谨慎使用！
 # 判断文件是否为 UTF-8
 is_utf8() {
     iconv -f utf-8 -t utf-8 "$1" >/dev/null 2>&1

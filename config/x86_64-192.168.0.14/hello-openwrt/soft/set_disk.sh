@@ -22,16 +22,6 @@ function set_disk() {
     echo yes | parted $disk ---pretend-input-tty resizepart 2 100%
     losetup /dev/loop0 $disk_main 2> /dev/null
     resize2fs -f /dev/loop0
-
-    # 判断是否安装了parted,如果已安装，则卸载.
-    if command -v parted &> /dev/null ; then
-        # 卸载相关的包
-        opkg uninstall parted
-        opkg uninstall losetup
-        opkg uninstall resize2fs
-        opkg uninstall libparted
-    fi
-    
 }
 
 # 调用函数

@@ -28,7 +28,7 @@ jobs:
             [ -z "$d" ] && continue
 
             # 如果目录下存在 no_compile 文件,则跳过
-            if [ -f "config/$d/no_compile423" ]; then
+            if [ -f "config/$d/no_compile" ]; then
               log "跳过 $d"
               continue
             fi
@@ -284,12 +284,12 @@ jobs:
           fi
 
           # 去除 BOM 脚本
-          if [ -f "$WORKSPACE_DIR/clear-bom.sh" ]; then
-            eval "chmod +x "$WORKSPACE_DIR/clear-bom.sh""
-            eval "cd "$WORKSPACE_DIR/config/$cfg/""
-            eval "$WORKSPACE_DIR/clear-bom.sh"
-            eval "cd "$BUILD_DIR""
-          fi
+          # if [ -f "$WORKSPACE_DIR/clear-bom.sh" ]; then
+          #   eval "chmod +x "$WORKSPACE_DIR/clear-bom.sh""
+          #   eval "cd "$WORKSPACE_DIR/config/$cfg/""
+          #   eval "$WORKSPACE_DIR/clear-bom.sh"
+          #   eval "cd "$BUILD_DIR""
+          # fi
 
           sudo cp -r "$WORKSPACE_DIR/config/$cfg/" "$TEMP_DIR"/
 
