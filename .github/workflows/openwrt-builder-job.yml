@@ -28,7 +28,7 @@ jobs:
             [ -z "$d" ] && continue
 
             # 如果目录下存在 no_compile 文件,则跳过
-            if [ -f "config/$d/no_compile" ]; then
+            if [ -f "config/$d/no_compile423" ]; then
               log "跳过 $d"
               continue
             fi
@@ -262,7 +262,7 @@ jobs:
             REDIRECT=""
           fi
           
-          TEMP_DIR="$WORKSPACE_DIR/tmp_source12"
+          TEMP_DIR="$WORKSPACE_DIR/tmp_source"
           if [ ! -d "$TEMP_DIR" ]; then
             mkdir -p "$TEMP_DIR"
             sudo chown -R $(id -u):$(id -g) "$TEMP_DIR"
