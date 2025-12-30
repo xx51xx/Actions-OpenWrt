@@ -359,10 +359,12 @@ jobs:
               eval "$WORKSPACE_DIR/config/$cfg/diy-part4.sh"
             fi
             
+            eval "make clean $REDIRECT"
+            eval "make defconfig $REDIRECT"
             sudo rm -f .config
             sudo rm -rf bin/targets/*
             sudo rm -rf "$TEMP_DIR"/*
-            eval "make clean $REDIRECT"
+            
             
             
             # log "$cfg 构建结束"
