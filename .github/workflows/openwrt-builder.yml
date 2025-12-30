@@ -248,10 +248,10 @@ jobs:
             # fi
 
             # 如果目录下存在 no_compile 文件,则跳过
-            # if [ -f "$WORKSPACE_DIR/config/$cfg/no_compile" ]; then
-            #     log "跳过 $cfg"
-            #     continue
-            # fi
+            if [ -f "$WORKSPACE_DIR/config/$cfg/no_compile" ]; then
+                log "跳过 $cfg"
+                continue
+            fi
 
 
             # 复制配置到临时文件夹
