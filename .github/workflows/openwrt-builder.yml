@@ -248,10 +248,10 @@ jobs:
             # fi
 
             # 如果目录下存在 no_compile 文件,则跳过
-            if [ -f "$WORKSPACE_DIR/config/$cfg/no_compile" ]; then
-                log "跳过 $cfg"
-                continue
-            fi
+            # if [ -f "$WORKSPACE_DIR/config/$cfg/no_compile" ]; then
+            #     log "跳过 $cfg"
+            #     continue
+            # fi
 
             oldcfg="$cfg"  # 保存初始 cfg
             while true; do
