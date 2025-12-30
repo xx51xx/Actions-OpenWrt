@@ -258,7 +258,9 @@ jobs:
                     if [ "$cfg" != "$oldcfg" ]; then
                         continue  # 如果 cfg 改变了,就跳过此次循环
                     else
-                        log "[心跳检测(30分钟/次)]正在构建: $cfg"
+                        if [ "$cfg" == "$oldcfg" ]; then
+                            log "[心跳检测(30分钟/次)]正在构建: $oldcfg"
+                        fi
                         sleep 1800   # 30 分钟
                     fi
                 done &
@@ -331,15 +333,6 @@ jobs:
             eval "make -j$(nproc) V=s $REDIRECT || make -j1 V=s $REDIRECT || make -j1 $REDIRECT"
             # log "$cfg 编译完成"
           
-            # 收集固件文件并输出
-            find bin/targets -type f \( -name '*.img.gz' -o -name '*.bin' \) \
-              | grep -Ev 'kernel\.bin$|rootfs\.img\.gz$|factory\.bin$' \
-              | while read -r img; do
-                  base=$(basename "$img")
-                  cp "$img" "$OUTPUT_DIR/${cfg}_$base"
-                  log "输出固件：${cfg}_$base"
-                done
-
             # 如果 cfg 中包含 lxc,则额外复制 rootfs.img.xx
             if echo "$cfg" | grep -qi "lxc"; then
               find bin/targets -type f \( -name '*rootfs.img.gz' -o -name '*rootfs.bin' \) \
@@ -347,6 +340,15 @@ jobs:
                     base=$(basename "$rootfs")
                     cp "$rootfs" "$OUTPUT_DIR/${cfg}_$base"
                     log "输出 LXC rootfs：${cfg}_$base"
+                  done
+            else
+              # 收集固件文件并输出
+              find bin/targets -type f \( -name '*.img.gz' -o -name '*.bin' \) \
+                | grep -Ev 'kernel\.bin$|rootfs\.img\.gz$|factory\.bin$' \
+                | while read -r img; do
+                    base=$(basename "$img")
+                    cp "$img" "$OUTPUT_DIR/${cfg}_$base"
+                    log "输出固件：${cfg}_$base"
                   done
             fi
 
@@ -360,6 +362,8 @@ jobs:
             sudo rm -f .config
             sudo rm -rf bin/targets/*
             sudo rm -rf "$TEMP_DIR"/*
+            eval "make clean $REDIRECT"
+            
             
             # log "$cfg 构建结束"
             log ""
