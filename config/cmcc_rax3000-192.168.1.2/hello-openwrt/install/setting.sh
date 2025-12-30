@@ -28,6 +28,9 @@ rm -rf /etc/uhttpd*
 # 创建home文件夹
 mkdir -p /home && chmod 0755 /home
 
+# 创建软链接挂载emcc分区
+[ -b /dev/mmcblk0p7 ] && { mount /dev/mmcblk0p7 /home; }
+
 # 设置控制程序
 mkdir -p /home/control && chmod 0755 /home/control
 mv -f /root/config/control.run /home/control/control.run 
