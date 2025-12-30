@@ -1,7 +1,5 @@
 #!/bin/sh
 
-# echo "开始强制转换所有文本文件为纯 UTF-8（无 BOM + LF）..."
-
 # 判断文件是否为 UTF-8
 is_utf8() {
     iconv -f utf-8 -t utf-8 "$1" >/dev/null 2>&1
@@ -12,12 +10,13 @@ remove_bom() {
     sed -i '1s/^\xEF\xBB\xBF//' "$1"
 }
 
-# 清理不可见控制字符（保留 TAB、LF、CR，保留所有 UTF-8 字符）
+# 清理不可见控制字符（保留 TAB、LF、CR）
 clean_control_chars() {
     sed -i 's/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]//g' "$1"
 }
 
-find . -type f | while read -r file; do
+# 只处理 .sh 文件
+find . -type f -name "*.sh" | while read -r file; do
     size=$(stat -c %s "$file" 2>/dev/null || echo 0)
 
     # 跳过大文件
@@ -43,20 +42,16 @@ find . -type f | while read -r file; do
 
     tmpfile="${file}.tmp_utf8"
 
-    # 强制转换为 UTF-8（无 BOM）
+    # 转换为 UTF-8（无 BOM）
     if iconv -f "$from_charset" -t utf-8 -c "$file" > "$tmpfile" 2>/dev/null; then
         mv -f "$tmpfile" "$file"
     else
         rm -f "$tmpfile"
-        # echo "转换失败，跳过: $file"
         continue
     fi
 
-    # 统一 LF
+    # 统一换行符为 LF
     dos2unix "$file" >/dev/null 2>&1
-
-    # echo "已转换为纯 UTF-8: $file"
 done
 
-# echo "全部处理完成！"
 exit 0
