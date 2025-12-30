@@ -25,7 +25,7 @@ echo u > /proc/sysrq-trigger
 dd if=openwrt.img of=/dev/vda bs=4M status=progress oflag=sync
 
 # 或者 
-dd if=openwrt-xxxx.img of=/dev/vda bs=4M conv=fsync
+dd if=openwrt.img of=/dev/vda bs=4M conv=fsync
 ```
 
 5. 强制重启
