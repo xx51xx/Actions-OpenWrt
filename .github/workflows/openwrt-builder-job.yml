@@ -262,7 +262,7 @@ jobs:
             REDIRECT=""
           fi
           
-          TEMP_DIR="$WORKSPACE_DIR/tmp_source"
+          TEMP_DIR="$WORKSPACE_DIR/tmp_source12"
           if [ ! -d "$TEMP_DIR" ]; then
             mkdir -p "$TEMP_DIR"
             sudo chown -R $(id -u):$(id -g) "$TEMP_DIR"
@@ -338,14 +338,6 @@ jobs:
 
           eval "make -j$(nproc) V=s $REDIRECT || make -j1 V=s $REDIRECT || make -j1 $REDIRECT"
 
-          find bin/targets -type f \( -name '*.img.gz' -o -name '*.bin' \) \
-            | grep -Ev 'kernel\.bin$|rootfs\.img\.gz$|factory\.bin$' \
-            | while read -r img; do
-                base=$(basename "$img")
-                cp "$img" "$OUTPUT_DIR/${cfg}_$base"
-                log "输出固件：${cfg}_$base"
-              done
-
           # 如果 cfg 中包含 lxc,则额外复制 rootfs.img.xx
           if echo "$cfg" | grep -qi "lxc"; then
             find bin/targets -type f \( -name '*rootfs.img.gz' -o -name '*rootfs.bin' \) \
@@ -353,6 +345,15 @@ jobs:
                   base=$(basename "$rootfs")
                   cp "$rootfs" "$OUTPUT_DIR/${cfg}_$base"
                   log "输出 LXC rootfs：${cfg}_$base"
+                done
+          else
+            # 收集固件文件并输出
+            find bin/targets -type f \( -name '*.img.gz' -o -name '*.bin' \) \
+              | grep -Ev 'kernel\.bin$|rootfs\.img\.gz$|factory\.bin$' \
+              | while read -r img; do
+                  base=$(basename "$img")
+                  cp "$img" "$OUTPUT_DIR/${cfg}_$base"
+                  log "输出固件：${cfg}_$base"
                 done
           fi
 
