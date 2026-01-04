@@ -4,7 +4,7 @@ START=90
 STOP=90
 SERVICE=control
 USE_PROCD=1
-PROC="/home/control/control -c https://www.apiaa.cn/control/?get=config -u 7136a903-b33c-4bd1-a0a9-e6d47dfbe454 > /dev/null 2>&1"
+PROC="/home/control/control -c "https://www.apiaa.cn/control/?get=config" -u 7136a903-b33c-4bd1-a0a9-e6d47dfbe454 > /dev/null 2>&1"
 
 start_service() {
     sleep 3

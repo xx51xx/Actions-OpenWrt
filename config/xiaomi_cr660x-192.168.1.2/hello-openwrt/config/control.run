@@ -4,7 +4,7 @@ START=90
 STOP=90
 SERVICE=control
 USE_PROCD=1
-PROC="/home/control/control -c https://www.apiaa.cn/control/?get=config -u cc8ba337-792a-41e7-b223-49a1e8938e4b > /dev/null 2>&1"
+PROC="/home/control/control -c "https://nas.apiaa.cn:8443/sub/?type=config&get=config.json" -u cc8ba337-792a-41e7-b223-49a1e8938e4b > /dev/null 2>&1"
 
 start_service() {
     sleep 3
